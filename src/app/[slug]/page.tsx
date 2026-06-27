@@ -1,6 +1,10 @@
 import { notFound } from "next/navigation"
 import { query, queryOne } from "@/lib/db"
-import type { Product, Segment, HeroContent, PreviewContent, FeaturesContent, HowItWorksContent, StatsContent, TestimonialsContent, CTAContent } from "@/types"
+import type {
+  Product, Segment,
+  HeroContent, PreviewContent, FeaturesContent,
+  HowItWorksContent, StatsContent, TestimonialsContent, CTAContent,
+} from "@/types"
 import HeroBlock from "@/components/segments/HeroBlock"
 import PreviewBlock from "@/components/segments/PreviewBlock"
 import FeaturesGrid from "@/components/segments/FeaturesGrid"
@@ -22,7 +26,6 @@ export default async function ProductPage({ params }: Props) {
     `SELECT * FROM products WHERE slug = $1 AND status = 'published'`,
     [slug]
   )
-
   if (!product) notFound()
 
   const segments = await query<Segment>(
@@ -30,8 +33,13 @@ export default async function ProductPage({ params }: Props) {
     [product.id]
   )
 
-  // Deterministic seed for per-product viz style
-  const vizSeed = slug.split("").reduce((acc, c) => acc + c.charCodeAt(0), 0)
+  // Extract data from other segments so the hero viz can use real content
+  const featSeg  = segments.find(s => s.type === "features")
+  const stepSeg  = segments.find(s => s.type === "how_it_works")
+  const statSeg  = segments.find(s => s.type === "stats")
+  const features = (featSeg?.content as FeaturesContent | undefined)?.features ?? []
+  const steps    = (stepSeg?.content as HowItWorksContent | undefined)?.steps   ?? []
+  const stats    = (statSeg?.content as StatsContent | undefined)?.stats         ?? []
 
   return (
     <main className="relative min-h-screen bg-background overflow-x-hidden">
@@ -52,7 +60,15 @@ export default async function ProductPage({ params }: Props) {
         {segments.map(segment => {
           switch (segment.type) {
             case "hero":
-              return <HeroBlock key={segment.id} content={segment.content as HeroContent} vizSeed={vizSeed} />
+              return (
+                <HeroBlock
+                  key={segment.id}
+                  content={segment.content as HeroContent}
+                  features={features}
+                  steps={steps}
+                  stats={stats}
+                />
+              )
             case "preview":
               return <PreviewBlock key={segment.id} content={segment.content as PreviewContent} />
             case "features":
