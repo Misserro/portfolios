@@ -2,12 +2,14 @@ import { NextRequest, NextResponse } from "next/server"
 
 export function middleware(request: NextRequest) {
   if (request.nextUrl.pathname.startsWith("/admin")) {
-    // Checking for the session cookie is Edge-safe.
-    // The pg driver can't run here (node:util/types missing in Edge),
-    // so we can't call auth.api.getSession(). The actual session is
-    // validated server-side in each admin page and API route.
-    const session = request.cookies.get("better-auth.session_token")
-    if (!session?.value) {
+    // BetterAuth prefixes the cookie with __Secure- on HTTPS (production).
+    // The pg driver can't run in the Edge runtime, so we check the cookie
+    // presence here; actual session validation happens server-side per route.
+    const hasSession =
+      request.cookies.has("__Secure-better-auth.session_token") ||
+      request.cookies.has("better-auth.session_token")
+
+    if (!hasSession) {
       return NextResponse.redirect(new URL("/", request.url))
     }
   }
