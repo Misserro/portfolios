@@ -40,7 +40,11 @@ export default function ProductTable({ initialProducts }: { initialProducts: Pro
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ productId: product.id }),
       })
-      if (!res.ok) throw new Error((await res.json()).error ?? "Failed")
+      if (!res.ok) {
+        let msg = `HTTP ${res.status}`
+        try { msg = (await res.json()).error ?? msg } catch { /* empty body */ }
+        throw new Error(msg)
+      }
       toast.success(`${product.name} — visuals regenerated`)
       router.refresh()
     } catch (e) {

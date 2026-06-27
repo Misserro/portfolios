@@ -165,75 +165,79 @@ export async function POST(req: NextRequest) {
 
   const tags = hero.tags ?? []
 
-  // Run icon generation and map extraction in parallel
-  const [iconMsg, mapMsg] = await Promise.all([
-    features.length > 0
-      ? client.messages.create({
-          model: "claude-sonnet-4-6",
-          max_tokens: 6000,
-          messages: [{ role: "user", content: buildIconPrompt(hero.headline ?? "", tags, features, conversationContext) }],
-        })
-      : Promise.resolve(null),
-    client.messages.create({
-      model: "claude-sonnet-4-6",
-      max_tokens: 600,
-      messages: [{ role: "user", content: buildMapPrompt(hero.headline ?? "", conversationContext) }],
-    }),
-  ])
-
-  // Parse and save icons
-  if (iconMsg && featSeg) {
-    const iconRaw  = iconMsg.content[0].type === "text" ? iconMsg.content[0].text : ""
-    const iconSvgs = parseIcons(iconRaw, features.length).map(sanitizeSvg)
-    if (iconSvgs.length > 0) {
-      const featContent = featSeg.content as FeaturesContent
-      const updatedFeatures = featContent.features.map((f, i) => ({
-        ...f,
-        icon_svg: iconSvgs[i] ? sanitizeSvg(iconSvgs[i]) : f.icon_svg,
-      }))
-      await query(
-        `UPDATE segments SET content = $2, updated_at = now() WHERE id = $1`,
-        [featSeg.id, JSON.stringify({ features: updatedFeatures })]
-      )
-    }
-  }
-
-  // Generate and save flow SVG
-  if (stepSeg && steps.length > 0) {
-    const flowSvg = renderFlow(steps)
-    const howContent = stepSeg.content as HowItWorksContent
-    await query(
-      `UPDATE segments SET content = $2, updated_at = now() WHERE id = $1`,
-      [stepSeg.id, JSON.stringify({ ...howContent, flow_svg: flowSvg })]
-    )
-  }
-
-  // Parse map data and upsert map segment
-  let mapData: MapContent | null = null
   try {
-    const mapRaw = mapMsg.content[0].type === "text" ? mapMsg.content[0].text : ""
-    const jsonStr = mapRaw.replace(/```json\s*/g, "").replace(/```\s*/g, "").trim()
-    mapData = JSON.parse(jsonStr) as MapContent
-  } catch {
-    // Non-fatal
-  }
+    // Run icon generation and map extraction in parallel
+    const [iconMsg, mapMsg] = await Promise.all([
+      features.length > 0
+        ? client.messages.create({
+            model: "claude-sonnet-4-6",
+            max_tokens: 6000,
+            messages: [{ role: "user", content: buildIconPrompt(hero.headline ?? "", tags, features, conversationContext) }],
+          })
+        : Promise.resolve(null),
+      client.messages.create({
+        model: "claude-sonnet-4-6",
+        max_tokens: 600,
+        messages: [{ role: "user", content: buildMapPrompt(hero.headline ?? "", conversationContext) }],
+      }),
+    ])
 
-  if (mapData && (mapData.countries.length > 0 || mapData.cities.length > 0)) {
-    if (mapSeg) {
+    // Parse and save icons
+    if (iconMsg && featSeg) {
+      const iconRaw  = iconMsg.content[0].type === "text" ? iconMsg.content[0].text : ""
+      const iconSvgs = parseIcons(iconRaw, features.length).map(sanitizeSvg)
+      if (iconSvgs.length > 0) {
+        const featContent = featSeg.content as FeaturesContent
+        const updatedFeatures = featContent.features.map((f, i) => ({
+          ...f,
+          icon_svg: iconSvgs[i] ? sanitizeSvg(iconSvgs[i]) : f.icon_svg,
+        }))
+        await query(
+          `UPDATE segments SET content = $2, updated_at = now() WHERE id = $1`,
+          [featSeg.id, JSON.stringify({ features: updatedFeatures })]
+        )
+      }
+    }
+
+    // Generate and save flow SVG
+    if (stepSeg && steps.length > 0) {
+      const flowSvg = renderFlow(steps)
+      const howContent = stepSeg.content as HowItWorksContent
       await query(
         `UPDATE segments SET content = $2, updated_at = now() WHERE id = $1`,
-        [mapSeg.id, JSON.stringify(mapData)]
-      )
-    } else {
-      // Insert new map segment after stats
-      const maxOrder = Math.max(...segments.map(s => s.order), 0)
-      await query(
-        `INSERT INTO segments (product_id, type, content, visible, "order")
-         VALUES ($1, 'map', $2, true, $3)`,
-        [productId, JSON.stringify(mapData), maxOrder + 1]
+        [stepSeg.id, JSON.stringify({ ...howContent, flow_svg: flowSvg })]
       )
     }
-  }
 
-  return NextResponse.json({ ok: true })
+    // Parse map data and upsert map segment
+    let mapData: MapContent | null = null
+    try {
+      const mapRaw = mapMsg.content[0].type === "text" ? mapMsg.content[0].text : ""
+      const jsonStr = mapRaw.replace(/```json\s*/g, "").replace(/```\s*/g, "").trim()
+      mapData = JSON.parse(jsonStr) as MapContent
+    } catch {
+      // Non-fatal
+    }
+
+    if (mapData && (mapData.countries.length > 0 || mapData.cities.length > 0)) {
+      if (mapSeg) {
+        await query(
+          `UPDATE segments SET content = $2, updated_at = now() WHERE id = $1`,
+          [mapSeg.id, JSON.stringify(mapData)]
+        )
+      } else {
+        const maxOrder = Math.max(...segments.map(s => s.order), 0)
+        await query(
+          `INSERT INTO segments (product_id, type, content, visible, "order")
+           VALUES ($1, 'map', $2, true, $3)`,
+          [productId, JSON.stringify(mapData), maxOrder + 1]
+        )
+      }
+    }
+
+    return NextResponse.json({ ok: true })
+  } catch (e) {
+    console.error("regenerate-visuals error:", e)
+    return NextResponse.json({ error: (e as Error).message ?? "Generation failed" }, { status: 500 })
+  }
 }
