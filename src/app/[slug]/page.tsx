@@ -1,0 +1,80 @@
+import { notFound } from "next/navigation"
+import { query, queryOne } from "@/lib/db"
+import type { Product, Segment, HeroContent, PreviewContent, FeaturesContent, HowItWorksContent, StatsContent, CTAContent } from "@/types"
+import HeroBlock from "@/components/segments/HeroBlock"
+import PreviewBlock from "@/components/segments/PreviewBlock"
+import FeaturesGrid from "@/components/segments/FeaturesGrid"
+import HowItWorksBlock from "@/components/segments/HowItWorksBlock"
+import StatsBlock from "@/components/segments/StatsBlock"
+import CTABlock from "@/components/segments/CTABlock"
+import Link from "next/link"
+
+interface Props {
+  params: Promise<{ slug: string }>
+}
+
+export default async function ProductPage({ params }: Props) {
+  const { slug } = await params
+
+  const product = await queryOne<Product>(
+    `SELECT * FROM products WHERE slug = $1 AND status = 'published'`,
+    [slug]
+  )
+
+  if (!product) notFound()
+
+  const segments = await query<Segment>(
+    `SELECT * FROM segments WHERE product_id = $1 AND visible = true ORDER BY "order" ASC`,
+    [product.id]
+  )
+
+  return (
+    <main className="relative min-h-screen">
+      <div className="pointer-events-none fixed inset-0 grid-background opacity-60" />
+
+      {/* Back nav */}
+      <nav className="relative z-10 px-8 py-6 border-b border-border flex items-center gap-4">
+        <Link href="/" className="font-display text-xl font-semibold tracking-tight text-white">
+          sfer<span className="text-cyan">.</span>
+        </Link>
+        <span className="text-border">·</span>
+        <span className="text-muted-foreground text-sm">{product.name}</span>
+      </nav>
+
+      {/* Render segments in order */}
+      <div className="relative z-10">
+        {segments.map(segment => {
+          switch (segment.type) {
+            case "hero":
+              return <HeroBlock key={segment.id} content={segment.content as HeroContent} />
+            case "preview":
+              return <PreviewBlock key={segment.id} content={segment.content as PreviewContent} />
+            case "features":
+              return <FeaturesGrid key={segment.id} content={segment.content as FeaturesContent} />
+            case "how_it_works":
+              return <HowItWorksBlock key={segment.id} content={segment.content as HowItWorksContent} />
+            case "stats":
+              return <StatsBlock key={segment.id} content={segment.content as StatsContent} />
+            case "cta":
+              return <CTABlock key={segment.id} content={segment.content as CTAContent} />
+            default:
+              return null
+          }
+        })}
+      </div>
+    </main>
+  )
+}
+
+export async function generateMetadata({ params }: Props) {
+  const { slug } = await params
+  const product = await queryOne<Product>(
+    `SELECT name, tagline FROM products WHERE slug = $1`,
+    [slug]
+  )
+  if (!product) return {}
+  return {
+    title: `${product.name} — sfer`,
+    description: product.tagline,
+  }
+}
