@@ -13,6 +13,7 @@ const ALLOWED_TYPES: Record<string, "document" | "image" | "video" | "text"> = {
   "application/vnd.openxmlformats-officedocument.wordprocessingml.document": "document",
   "text/plain": "text",
   "text/markdown": "text",
+  "text/x-markdown": "text",
   "image/jpeg": "image",
   "image/png": "image",
   "image/webp": "image",
@@ -20,6 +21,10 @@ const ALLOWED_TYPES: Record<string, "document" | "image" | "video" | "text"> = {
   "video/mp4": "video",
   "video/webm": "video",
 }
+
+// Extension fallback for when browsers send wrong MIME types (e.g. .md as application/octet-stream)
+const TEXT_EXTENSIONS = new Set([".md", ".txt", ".markdown"])
+const DOC_EXTENSIONS  = new Set([".pdf", ".docx"])
 
 // Files we send to Anthropic Files API (Claude can read these natively)
 const ANTHROPIC_FILE_TYPES = new Set([
@@ -41,7 +46,11 @@ export async function POST(request: NextRequest) {
   const file = formData.get("file") as File | null
   if (!file) return NextResponse.json({ error: "No file provided" }, { status: 400 })
 
+  const ext = "." + file.name.split(".").pop()!.toLowerCase()
   const fileKind = ALLOWED_TYPES[file.type]
+    ?? (TEXT_EXTENSIONS.has(ext) ? "text" : undefined)
+    ?? (DOC_EXTENSIONS.has(ext)  ? "document" : undefined)
+
   if (!fileKind) {
     return NextResponse.json(
       { error: `File type not supported. Accepted: PDF, DOCX, TXT, MD, images, MP4, WebM` },
