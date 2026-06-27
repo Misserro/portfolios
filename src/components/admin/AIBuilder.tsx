@@ -3,7 +3,7 @@
 import { useState, useRef, useEffect, useCallback } from "react"
 import { motion, AnimatePresence } from "framer-motion"
 import { toast } from "sonner"
-import type { AIMessage } from "@/types"
+import type { AIMessage, AIFileAttachment } from "@/types"
 
 type Phase = "clarifying" | "form_review" | "preview"
 
@@ -22,6 +22,11 @@ interface Form {
   segments: SegmentMap
 }
 
+interface CorrectionMessage {
+  role: "user" | "assistant"
+  content: string
+}
+
 interface Props {
   productId: string
   sessionId: string
@@ -37,22 +42,39 @@ export default function AIBuilder({ productId, sessionId, productName, onComplet
   const [streamText, setStreamText]     = useState("")
   const [form, setForm]                 = useState<Form | null>(null)
   const [generating, setGenerating]     = useState(false)
-  const [publishing, setPublishing]     = useState<"preview" | "published" | null>(null)
+  const [publishing, setPublishing]     = useState(false)
   const [uploadingFile, setUploadingFile] = useState(false)
-  // Track which form fields have been revealed (for sequential animation)
   const [revealedFields, setRevealedFields] = useState<Set<string>>(new Set())
 
-  const bottomRef   = useRef<HTMLDivElement>(null)
-  const fileRef     = useRef<HTMLInputElement>(null)
-  const hasBooted   = useRef(false)
+  // Phase 3 state
+  const [previewSlug, setPreviewSlug]             = useState("")
+  const [savingPreview, setSavingPreview]         = useState(false)
+  const [correctionMessages, setCorrectionMessages] = useState<CorrectionMessage[]>([])
+  const [correctionInput, setCorrectionInput]     = useState("")
+  const [correcting, setCorrecting]               = useState(false)
+
+  const bottomRef        = useRef<HTMLDivElement>(null)
+  const correctionEndRef = useRef<HTMLDivElement>(null)
+  const fileRef          = useRef<HTMLInputElement>(null)
+  const iframeRef        = useRef<HTMLIFrameElement>(null)
+  const hasBooted        = useRef(false)
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" })
   }, [messages, streamText])
 
-  const sendMessage = useCallback(async (content: string) => {
+  useEffect(() => {
+    correctionEndRef.current?.scrollIntoView({ behavior: "smooth" })
+  }, [correctionMessages, correcting])
+
+  const sendMessage = useCallback(async (content: string, attachments?: AIFileAttachment[]) => {
     if (streaming) return
-    setMessages(prev => [...prev, { role: "user", content, timestamp: new Date().toISOString() }])
+    setMessages(prev => [...prev, {
+      role: "user",
+      content,
+      timestamp: new Date().toISOString(),
+      ...(attachments?.length ? { attachments } : {}),
+    }])
     setInput("")
     setStreaming(true)
     setStreamText("")
@@ -61,13 +83,13 @@ export default function AIBuilder({ productId, sessionId, productName, onComplet
       const res = await fetch("/api/ai/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ sessionId, message: content }),
+        body: JSON.stringify({ sessionId, message: content, attachments }),
       })
       if (!res.body) throw new Error()
 
-      const reader  = res.body.getReader()
-      const decoder = new TextDecoder()
-      let accumulated = ""
+      const reader     = res.body.getReader()
+      const decoder    = new TextDecoder()
+      let accumulated  = ""
 
       while (true) {
         const { done, value } = await reader.read()
@@ -89,7 +111,6 @@ export default function AIBuilder({ productId, sessionId, productName, onComplet
     }
   }, [streaming, sessionId])
 
-  // Boot the session once
   useEffect(() => {
     if (hasBooted.current) return
     hasBooted.current = true
@@ -105,11 +126,14 @@ export default function AIBuilder({ productId, sessionId, productName, onComplet
       fd.append("file", file)
       const res = await fetch("/api/upload", { method: "POST", body: fd })
       if (!res.ok) { toast.error((await res.json()).error ?? "Upload failed"); return }
-      const { extractedText, name } = await res.json()
-      if (extractedText) {
-        await sendMessage(`Here is the content of "${name}":\n\n${extractedText}`)
+      const { anthropicFileId, name, type: contentType } = await res.json()
+      if (anthropicFileId) {
+        await sendMessage(
+          `I've attached "${name}" for context.`,
+          [{ file_id: anthropicFileId, content_type: contentType, name }]
+        )
       } else {
-        toast.info(`${name} uploaded — no text extracted`)
+        toast.info(`${name} uploaded`)
       }
     } catch { toast.error("Upload failed") }
     finally { setUploadingFile(false); if (fileRef.current) fileRef.current.value = "" }
@@ -127,7 +151,6 @@ export default function AIBuilder({ productId, sessionId, productName, onComplet
       const { form: generatedForm } = await res.json()
       setForm(generatedForm)
       setPhase("form_review")
-      // Reveal fields one by one after a short delay
       const allFields = [
         "meta", "hero.headline", "hero.subheadline", "hero.description", "hero.tags",
         "features", "how_it_works", "stats", "cta",
@@ -141,9 +164,9 @@ export default function AIBuilder({ productId, sessionId, productName, onComplet
     finally { setGenerating(false) }
   }
 
-  async function handlePublish(status: "preview" | "published") {
+  async function handleEnterPreview() {
     if (!form) return
-    setPublishing(status)
+    setSavingPreview(true)
     try {
       const segmentOrder = ["hero", "preview", "features", "how_it_works", "stats", "testimonials", "cta"] as const
       const segments = segmentOrder
@@ -165,15 +188,52 @@ export default function AIBuilder({ productId, sessionId, productName, onComplet
         fetch(`/api/products/${productId}`, {
           method: "PATCH",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ name: form.name, slug: form.slug, tagline: form.tagline, status }),
+          body: JSON.stringify({ name: form.name, slug: form.slug, tagline: form.tagline, status: "preview" }),
         }),
       ])
-
       if (!segRes.ok || !metaRes.ok) throw new Error()
-      toast.success(status === "published" ? "Published" : "Saved as preview")
+      setPreviewSlug(form.slug)
+      setPhase("preview")
+    } catch { toast.error("Failed to save — try again") }
+    finally { setSavingPreview(false) }
+  }
+
+  async function handleCorrection(e: React.FormEvent) {
+    e.preventDefault()
+    if (!correctionInput.trim() || correcting) return
+    const msg = correctionInput.trim()
+    setCorrectionMessages(prev => [...prev, { role: "user", content: msg }])
+    setCorrectionInput("")
+    setCorrecting(true)
+    try {
+      const res = await fetch("/api/ai/correct", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ sessionId, productId, message: msg }),
+      })
+      if (!res.ok) throw new Error()
+      const { message, updatedSegmentType } = await res.json()
+      setCorrectionMessages(prev => [...prev, { role: "assistant", content: message }])
+      if (updatedSegmentType && iframeRef.current) {
+        iframeRef.current.src = `/preview/${previewSlug}?highlight=${updatedSegmentType}`
+      }
+    } catch { toast.error("Correction failed") }
+    finally { setCorrecting(false) }
+  }
+
+  async function handlePublish() {
+    setPublishing(true)
+    try {
+      const res = await fetch(`/api/products/${productId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status: "published" }),
+      })
+      if (!res.ok) throw new Error()
+      toast.success("Published")
       onComplete()
     } catch { toast.error("Publish failed") }
-    finally { setPublishing(null) }
+    finally { setPublishing(false) }
   }
 
   function handleSubmit(e: React.FormEvent) {
@@ -182,16 +242,134 @@ export default function AIBuilder({ productId, sessionId, productName, onComplet
     sendMessage(input.trim())
   }
 
-  // Messages visible in the chat panel (hide the boot message sent by the system)
   const visibleMessages = messages.filter((m, i) => !(i === 0 && m.role === "user"))
 
+  // ─── Phase 3: Full split ───────────────────────────────────────────────────
+  if (phase === "preview") {
+    return (
+      <div className="flex flex-col h-[calc(100vh-57px)]">
+        {/* Top bar */}
+        <div className="flex items-center justify-between py-5 border-b border-border shrink-0">
+          <div>
+            <span className="font-mono text-xs text-amber uppercase tracking-widest block mb-0.5">
+              03 — Review
+            </span>
+            <h1 className="font-display text-xl font-bold text-foreground">{productName}</h1>
+          </div>
+          <button
+            onClick={() => setPhase("form_review")}
+            className="font-mono text-xs text-slate hover:text-foreground transition-colors px-3 py-2"
+          >
+            ← Edit form
+          </button>
+        </div>
+
+        {/* Split body */}
+        <div className="flex flex-1 min-h-0">
+          {/* Iframe — dominant left */}
+          <div className="flex-1 min-h-0 relative bg-background">
+            <iframe
+              ref={iframeRef}
+              src={`/preview/${previewSlug}`}
+              className="w-full h-full border-0"
+              title="Product preview"
+            />
+          </div>
+
+          {/* Correction sidebar — right */}
+          <div className="w-[320px] shrink-0 border-l border-border flex flex-col min-h-0">
+            {/* Correction label */}
+            <div className="px-5 pt-5 pb-3 shrink-0">
+              <div className="flex items-center gap-3">
+                <span className="font-mono text-xs text-amber uppercase tracking-widest">Corrections</span>
+                <div className="rule-amber flex-1" />
+              </div>
+            </div>
+
+            {/* Messages */}
+            <div className="flex-1 overflow-y-auto px-5 flex flex-col gap-4 pb-4">
+              {correctionMessages.length === 0 && (
+                <p className="font-mono text-xs text-slate/50 leading-relaxed mt-2">
+                  Tell me what to fix — I&apos;ll update the right section and reload the preview.
+                </p>
+              )}
+              {correctionMessages.map((msg, i) => (
+                <div key={i} className={`flex flex-col gap-1 ${msg.role === "user" ? "items-end" : "items-start"}`}>
+                  <span className={`font-mono text-[10px] ${msg.role === "user" ? "text-slate" : "text-amber"}`}>
+                    {msg.role === "user" ? "you" : "claude"}
+                  </span>
+                  <p className={`font-mono text-xs leading-relaxed whitespace-pre-wrap break-words ${
+                    msg.role === "user"
+                      ? "bg-elevated border border-border rounded-sm px-2.5 py-2 text-foreground text-right"
+                      : "text-foreground/80"
+                  }`}>
+                    {msg.content}
+                  </p>
+                </div>
+              ))}
+              {correcting && (
+                <div className="flex flex-col gap-1 items-start">
+                  <span className="font-mono text-[10px] text-amber">claude</span>
+                  <div className="flex gap-1 py-1">
+                    {[0, 1, 2].map(i => (
+                      <span key={i} className="w-1 h-1 rounded-full bg-amber/60 animate-bounce"
+                        style={{ animationDelay: `${i * 0.12}s` }} />
+                    ))}
+                  </div>
+                </div>
+              )}
+              <div ref={correctionEndRef} />
+            </div>
+
+            {/* Correction input */}
+            <form onSubmit={handleCorrection} className="border-t border-border px-4 py-3 shrink-0 flex gap-2">
+              <input
+                type="text"
+                value={correctionInput}
+                onChange={e => setCorrectionInput(e.target.value)}
+                placeholder="e.g. make headline shorter"
+                disabled={correcting}
+                className="flex-1 bg-input border border-border rounded-sm px-3 py-2 font-mono text-xs text-foreground placeholder:text-slate/40 focus:outline-none focus:border-amber/30 transition-colors disabled:opacity-40"
+              />
+              <button
+                type="submit"
+                disabled={!correctionInput.trim() || correcting}
+                className="font-mono text-xs bg-amber/10 border border-amber/20 text-amber px-3 py-2 rounded-sm hover:bg-amber/20 transition-colors disabled:opacity-30"
+              >
+                →
+              </button>
+            </form>
+
+            {/* Publish bar */}
+            <div className="border-t border-border px-4 py-4 shrink-0 flex flex-col gap-2">
+              <button
+                onClick={onComplete}
+                className="w-full font-mono text-xs border border-amber/20 text-amber px-4 py-2.5 rounded-sm hover:bg-amber/8 transition-colors text-center"
+              >
+                Save as preview
+              </button>
+              <button
+                onClick={handlePublish}
+                disabled={publishing}
+                className="w-full font-mono text-xs bg-amber text-background px-4 py-2.5 rounded-sm font-bold hover:bg-amber/90 transition-colors disabled:opacity-40 text-center"
+              >
+                {publishing ? "Publishing…" : "Publish now"}
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  // ─── Phases 1 & 2 ─────────────────────────────────────────────────────────
   return (
     <div className="flex flex-col h-[calc(100vh-57px)]">
       {/* Top bar */}
       <div className="flex items-center justify-between py-5 border-b border-border shrink-0">
         <div>
           <span className="font-mono text-xs text-amber uppercase tracking-widest block mb-0.5">
-            {phase === "clarifying" ? "01 — Clarify" : phase === "form_review" ? "02 — Review" : "03 — Publish"}
+            {phase === "clarifying" ? "01 — Clarify" : "02 — Review"}
           </span>
           <h1 className="font-display text-xl font-bold text-foreground">{productName}</h1>
         </div>
@@ -215,34 +393,11 @@ export default function AIBuilder({ productId, sessionId, productName, onComplet
                 ← Back
               </button>
               <button
-                onClick={() => setPhase("preview")}
-                className="font-mono text-xs bg-amber text-background px-4 py-2 rounded-sm font-bold hover:bg-amber/90 transition-colors"
-              >
-                Looks good →
-              </button>
-            </>
-          )}
-          {phase === "preview" && (
-            <>
-              <button
-                onClick={() => setPhase("form_review")}
-                className="font-mono text-xs text-slate hover:text-foreground transition-colors px-3 py-2"
-              >
-                ← Edit
-              </button>
-              <button
-                onClick={() => handlePublish("preview")}
-                disabled={!!publishing}
-                className="font-mono text-xs border border-amber/30 text-amber px-4 py-2 rounded-sm hover:bg-amber/8 transition-colors disabled:opacity-40"
-              >
-                {publishing === "preview" ? "Saving…" : "Save preview"}
-              </button>
-              <button
-                onClick={() => handlePublish("published")}
-                disabled={!!publishing}
+                onClick={handleEnterPreview}
+                disabled={savingPreview}
                 className="font-mono text-xs bg-amber text-background px-4 py-2 rounded-sm font-bold hover:bg-amber/90 transition-colors disabled:opacity-40"
               >
-                {publishing === "published" ? "Publishing…" : "Publish"}
+                {savingPreview ? "Saving…" : "Looks good →"}
               </button>
             </>
           )}
@@ -252,7 +407,7 @@ export default function AIBuilder({ productId, sessionId, productName, onComplet
       {/* Body */}
       <div className="flex flex-1 min-h-0 gap-0">
 
-        {/* Chat panel — always visible */}
+        {/* Chat panel */}
         <div className={`flex flex-col min-h-0 transition-all duration-500 ${phase === "clarifying" ? "flex-1" : "w-[420px] shrink-0 border-r border-border"}`}>
           <div className="flex-1 overflow-y-auto py-6 px-1 flex flex-col gap-5">
             {visibleMessages.map((msg, i) => (
@@ -276,7 +431,6 @@ export default function AIBuilder({ productId, sessionId, productName, onComplet
               </motion.div>
             ))}
 
-            {/* Streaming text */}
             {streamText && (
               <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="self-start max-w-[85%]">
                 <span className="font-mono text-xs text-amber block mb-1">claude</span>
@@ -287,7 +441,6 @@ export default function AIBuilder({ productId, sessionId, productName, onComplet
               </motion.div>
             )}
 
-            {/* Typing indicator */}
             {streaming && !streamText && (
               <div className="self-start">
                 <span className="font-mono text-xs text-amber block mb-1">claude</span>
@@ -331,9 +484,9 @@ export default function AIBuilder({ productId, sessionId, productName, onComplet
           </div>
         </div>
 
-        {/* Form / Preview panel — slides in during form_review and preview */}
+        {/* Form panel */}
         <AnimatePresence>
-          {(phase === "form_review" || phase === "preview") && form && (
+          {phase === "form_review" && form && (
             <motion.div
               initial={{ opacity: 0, x: 24 }}
               animate={{ opacity: 1, x: 0 }}
@@ -341,11 +494,7 @@ export default function AIBuilder({ productId, sessionId, productName, onComplet
               transition={{ duration: 0.35, ease: "easeOut" }}
               className="flex-1 overflow-y-auto py-6 px-8 min-h-0"
             >
-              {phase === "form_review" ? (
-                <FormEditor form={form} onChange={setForm} revealedFields={revealedFields} />
-              ) : (
-                <PublishPreview form={form} />
-              )}
+              <FormEditor form={form} onChange={setForm} revealedFields={revealedFields} />
             </motion.div>
           )}
         </AnimatePresence>
@@ -481,30 +630,6 @@ function FormEditor({
   )
 }
 
-// ─── Publish preview ────────────────────────────────────────────────────────
-
-function PublishPreview({ form }: { form: Form }) {
-  return (
-    <div className="flex flex-col gap-6">
-      <div>
-        <span className="font-mono text-xs text-amber uppercase tracking-widest block mb-3">Ready to publish</span>
-        <h2 className="font-display text-2xl font-bold text-foreground">{form.name}</h2>
-        <p className="font-mono text-xs text-slate mt-1">/{form.slug}</p>
-        <p className="text-sm text-slate mt-2">{form.tagline}</p>
-      </div>
-      <div className="rule-amber w-12" />
-      <div className="flex flex-col gap-1">
-        {Object.keys(form.segments).map(type => (
-          <div key={type} className="flex items-center gap-3 py-2 border-b border-border">
-            <span className="font-mono text-xs text-foreground w-24">{type.replace(/_/g, " ")}</span>
-            <span className="font-mono text-xs text-green-400">✓ ready</span>
-          </div>
-        ))}
-      </div>
-    </div>
-  )
-}
-
 // ─── Primitives ─────────────────────────────────────────────────────────────
 
 function RevealSection({
@@ -515,6 +640,7 @@ function RevealSection({
   revealed: boolean
   children: React.ReactNode
 }) {
+  void fieldKey
   return (
     <motion.div
       initial={{ opacity: 0, y: 8 }}

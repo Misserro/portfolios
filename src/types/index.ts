@@ -107,8 +107,15 @@ export interface AISession {
   updated_at: string
 }
 
+export interface AIFileAttachment {
+  file_id: string
+  content_type: string
+  name: string
+}
+
 export interface AIMessage {
   role: "user" | "assistant"
   content: string
   timestamp: string
+  attachments?: AIFileAttachment[]
 }

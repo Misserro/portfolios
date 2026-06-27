@@ -1,11 +1,12 @@
 import { notFound } from "next/navigation"
 import { query, queryOne } from "@/lib/db"
-import type { Product, Segment, HeroContent, PreviewContent, FeaturesContent, HowItWorksContent, StatsContent, CTAContent } from "@/types"
+import type { Product, Segment, HeroContent, PreviewContent, FeaturesContent, HowItWorksContent, StatsContent, TestimonialsContent, CTAContent } from "@/types"
 import HeroBlock from "@/components/segments/HeroBlock"
 import PreviewBlock from "@/components/segments/PreviewBlock"
 import FeaturesGrid from "@/components/segments/FeaturesGrid"
 import HowItWorksBlock from "@/components/segments/HowItWorksBlock"
 import StatsBlock from "@/components/segments/StatsBlock"
+import TestimonialsBlock from "@/components/segments/TestimonialsBlock"
 import CTABlock from "@/components/segments/CTABlock"
 import Link from "next/link"
 
