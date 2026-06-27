@@ -2,8 +2,8 @@ import { NextRequest, NextResponse } from "next/server"
 import { auth } from "@/lib/auth"
 import { query, queryOne } from "@/lib/db"
 import Anthropic from "@anthropic-ai/sdk"
-import type { AISession, AIMessage, Segment, HeroContent, FeaturesContent, HowItWorksContent, StatsContent } from "@/types"
-import { renderViz, type VizData } from "@/lib/viz-renderer"
+import type { AISession, AIMessage, Segment, HeroContent, FeaturesContent, HowItWorksContent, StatsContent, MapContent } from "@/types"
+import { renderFlow } from "@/lib/flow-renderer"
 
 const client = new Anthropic()
 
@@ -31,7 +31,7 @@ function formatConversation(messages: AIMessage[]): string {
     .join("\n\n")
 }
 
-const STYLE_EXAMPLES = `
+const ICON_STYLE = `
 STYLE REFERENCE — real icons from the app. Match this exact visual style:
 
 Example A (shield with check):
@@ -68,11 +68,11 @@ PRODUCT: ${headline} (${tags.join(", ")})
 FULL CONVERSATION:
 ${conversationContext || "(not available)"}
 
-${STYLE_EXAMPLES}
+${ICON_STYLE}
 
 Generate ${features.length} icons. Each must represent the specific feature — not software generically.
 
-Icon design: read title AND description → identify the real-world action → draw it at 28×28px → match style examples.
+Icon design: read title AND description → identify the real-world action → draw it.
 
 FEATURES:
 ${featureLines}
@@ -80,7 +80,7 @@ ${featureLines}
 RULES:
 - ONLY inner elements (no <svg> wrapper — page provides viewBox="0 0 24 24")
 - Elements: <path> <circle> <rect> <line> <polyline> <polygon>
-- stroke="#F2843C" or fill="#F2843C" only — no other colors
+- stroke="#F2843C" or fill="#F2843C" only
 - No animations, no <style>, no <defs>, no <g> — 4–8 elements per icon
 
 ===ICON:1===
@@ -91,40 +91,45 @@ RULES:
 ===END===`
 }
 
-function buildVizDataPrompt(
-  headline: string, tags: string[], description: string,
-  steps: { title: string }[], stats: { label: string; value: string }[],
-  conversationContext: string,
-): string {
-  const stepsText = steps.map((s, i) => `${i + 1}. ${s.title}`).join(" → ")
-  const statsText = stats.map(s => `${s.label}: ${s.value}`).join(" | ")
+function buildMapPrompt(headline: string, conversationContext: string): string {
+  return `Extract geographic coverage data from this product conversation. Return ONLY valid JSON, no markdown.
 
-  return `Choose a visualization for an investor-facing product showcase page.
-
-PRODUCT: ${headline} (${tags.join(", ")})
-${description}
-${stepsText ? `Process: ${stepsText}` : ""}
-${statsText ? `Stats: ${statsText}` : ""}
+PRODUCT: ${headline}
 
 CONVERSATION:
 ${conversationContext || "(not available)"}
 
-PIPELINE — sequential stages (3–4): for workflows, order fulfillment, document processing
-DASHBOARD — bar chart (3–4 bars): for metrics, growth, performance comparison
-RADIAL — hub + satellites (4–5 nodes): for platforms, networks, integrations
+Instructions:
+- Identify which countries or regions this product currently operates in (not planned future expansion)
+- List major cities/locations mentioned (with accurate real-world coordinates)
+- Choose a map center and scale that frames the coverage area well
 
-Return ONLY valid JSON:
+Scale guide:
+- Single country (small): scale 2500–4000
+- Single country (large, e.g. US): scale 800–1200
+- Regional cluster (e.g. Central Europe): scale 600–900
+- Continent: scale 300–500
+- World: scale 150
+
+Return this JSON shape (include only what applies):
 {
-  "type": "pipeline" | "dashboard" | "radial",
-  "title": "MAX 20 CHARS",
-  "stages": [{"label": "MAX 9 CHARS", "sublabel": "MAX 11 CHARS optional"}],
-  "bars": [{"label": "MAX 8 CHARS", "value": "MAX 8 CHARS", "numericValue": 42}],
-  "hub": "MAX 9 CHARS",
-  "nodes": [{"label": "MAX 9 CHARS", "sublabel": "MAX 11 CHARS optional"}],
-  "stats": [{"label": "MAX 9 CHARS", "value": "MAX 9 CHARS"}]
+  "label": "Coverage Area",
+  "countries": ["PL"],
+  "cities": [
+    { "name": "Katowice", "coordinates": [19.027, 50.257] },
+    { "name": "Gliwice", "coordinates": [18.670, 50.292] }
+  ],
+  "center": [19.5, 50.8],
+  "scale": 3000
 }
 
-Include only fields for chosen type. stats optional (max 3). Use real product labels — names from the conversation.`
+Rules:
+- countries: ISO alpha-2 codes only
+- coordinates: [longitude, latitude] — must be accurate real-world values
+- center: [longitude, latitude] of the map viewport center
+- scale: higher = more zoomed in
+- Only include cities explicitly mentioned in the conversation — do not invent locations
+- If product has no clear geographic scope, return { "countries": [], "cities": [], "center": [0, 20], "scale": 150 }`
 }
 
 export async function POST(req: NextRequest) {
@@ -142,14 +147,13 @@ export async function POST(req: NextRequest) {
   const heroSeg = segments.find(s => s.type === "hero")
   const featSeg = segments.find(s => s.type === "features")
   const stepSeg = segments.find(s => s.type === "how_it_works")
-  const statSeg = segments.find(s => s.type === "stats")
+  const mapSeg  = segments.find(s => s.type === "map")
 
   if (!heroSeg) return NextResponse.json({ error: "No hero segment found" }, { status: 404 })
 
   const hero     = heroSeg.content as HeroContent
   const features = (featSeg?.content as FeaturesContent | undefined)?.features ?? []
   const steps    = (stepSeg?.content as HowItWorksContent | undefined)?.steps ?? []
-  const stats    = (statSeg?.content as StatsContent | undefined)?.stats ?? []
 
   const aiSession = await queryOne<AISession>(
     `SELECT * FROM ai_sessions WHERE product_id = $1 ORDER BY created_at DESC LIMIT 1`,
@@ -161,55 +165,75 @@ export async function POST(req: NextRequest) {
 
   const tags = hero.tags ?? []
 
-  // Run icon generation and viz data extraction in parallel
-  const [iconMsg, vizMsg] = await Promise.all([
-    client.messages.create({
-      model: "claude-sonnet-4-6",
-      max_tokens: 6000,
-      messages: [{ role: "user", content: buildIconPrompt(hero.headline ?? "", tags, features, conversationContext) }],
-    }),
+  // Run icon generation and map extraction in parallel
+  const [iconMsg, mapMsg] = await Promise.all([
+    features.length > 0
+      ? client.messages.create({
+          model: "claude-sonnet-4-6",
+          max_tokens: 6000,
+          messages: [{ role: "user", content: buildIconPrompt(hero.headline ?? "", tags, features, conversationContext) }],
+        })
+      : Promise.resolve(null),
     client.messages.create({
       model: "claude-sonnet-4-6",
       max_tokens: 600,
-      messages: [{ role: "user", content: buildVizDataPrompt(hero.headline ?? "", tags, hero.description ?? "", steps, stats, conversationContext) }],
+      messages: [{ role: "user", content: buildMapPrompt(hero.headline ?? "", conversationContext) }],
     }),
   ])
 
-  // Parse icons
-  const iconRaw  = iconMsg.content[0].type === "text" ? iconMsg.content[0].text : ""
-  const iconSvgs = parseIcons(iconRaw, features.length).map(sanitizeSvg)
+  // Parse and save icons
+  if (iconMsg && featSeg) {
+    const iconRaw  = iconMsg.content[0].type === "text" ? iconMsg.content[0].text : ""
+    const iconSvgs = parseIcons(iconRaw, features.length).map(sanitizeSvg)
+    if (iconSvgs.length > 0) {
+      const featContent = featSeg.content as FeaturesContent
+      const updatedFeatures = featContent.features.map((f, i) => ({
+        ...f,
+        icon_svg: iconSvgs[i] ? sanitizeSvg(iconSvgs[i]) : f.icon_svg,
+      }))
+      await query(
+        `UPDATE segments SET content = $2, updated_at = now() WHERE id = $1`,
+        [featSeg.id, JSON.stringify({ features: updatedFeatures })]
+      )
+    }
+  }
 
-  // Render viz from structured data
-  let heroVizSvg = ""
+  // Generate and save flow SVG
+  if (stepSeg && steps.length > 0) {
+    const flowSvg = renderFlow(steps)
+    const howContent = stepSeg.content as HowItWorksContent
+    await query(
+      `UPDATE segments SET content = $2, updated_at = now() WHERE id = $1`,
+      [stepSeg.id, JSON.stringify({ ...howContent, flow_svg: flowSvg })]
+    )
+  }
+
+  // Parse map data and upsert map segment
+  let mapData: MapContent | null = null
   try {
-    const vizRaw  = vizMsg.content[0].type === "text" ? vizMsg.content[0].text : ""
-    const jsonStr = vizRaw.replace(/```json\s*/g, "").replace(/```\s*/g, "").trim()
-    const vizData = JSON.parse(jsonStr) as VizData
-    heroVizSvg = renderViz(vizData)
+    const mapRaw = mapMsg.content[0].type === "text" ? mapMsg.content[0].text : ""
+    const jsonStr = mapRaw.replace(/```json\s*/g, "").replace(/```\s*/g, "").trim()
+    mapData = JSON.parse(jsonStr) as MapContent
   } catch {
     // Non-fatal
   }
 
-  // Save to DB
-  if (heroSeg && heroVizSvg) {
-    const updatedHero: HeroContent = { ...hero, viz_svg: heroVizSvg }
-    await query(
-      `UPDATE segments SET content = $2, updated_at = now() WHERE id = $1`,
-      [heroSeg.id, JSON.stringify(updatedHero)]
-    )
+  if (mapData && (mapData.countries.length > 0 || mapData.cities.length > 0)) {
+    if (mapSeg) {
+      await query(
+        `UPDATE segments SET content = $2, updated_at = now() WHERE id = $1`,
+        [mapSeg.id, JSON.stringify(mapData)]
+      )
+    } else {
+      // Insert new map segment after stats
+      const maxOrder = Math.max(...segments.map(s => s.order), 0)
+      await query(
+        `INSERT INTO segments (product_id, type, content, visible, "order")
+         VALUES ($1, 'map', $2, true, $3)`,
+        [productId, JSON.stringify(mapData), maxOrder + 1]
+      )
+    }
   }
 
-  if (featSeg && iconSvgs.length > 0) {
-    const featContent = featSeg.content as FeaturesContent
-    const updatedFeatures = featContent.features.map((f, i) => ({
-      ...f,
-      icon_svg: iconSvgs[i] ? sanitizeSvg(iconSvgs[i]) : f.icon_svg,
-    }))
-    await query(
-      `UPDATE segments SET content = $2, updated_at = now() WHERE id = $1`,
-      [featSeg.id, JSON.stringify({ features: updatedFeatures })]
-    )
-  }
-
-  return NextResponse.json({ ok: true, iconCount: iconSvgs.length, hasViz: !!heroVizSvg })
+  return NextResponse.json({ ok: true })
 }

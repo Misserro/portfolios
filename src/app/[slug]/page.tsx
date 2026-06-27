@@ -3,7 +3,7 @@ import { query, queryOne } from "@/lib/db"
 import type {
   Product, Segment,
   HeroContent, PreviewContent, FeaturesContent,
-  HowItWorksContent, StatsContent, TestimonialsContent, CTAContent,
+  HowItWorksContent, StatsContent, TestimonialsContent, CTAContent, MapContent,
 } from "@/types"
 import HeroBlock from "@/components/segments/HeroBlock"
 import PreviewBlock from "@/components/segments/PreviewBlock"
@@ -12,8 +12,11 @@ import HowItWorksBlock from "@/components/segments/HowItWorksBlock"
 import StatsBlock from "@/components/segments/StatsBlock"
 import TestimonialsBlock from "@/components/segments/TestimonialsBlock"
 import CTABlock from "@/components/segments/CTABlock"
+import MapBlock from "@/components/segments/MapBlock"
 import HeroCanvas from "@/components/HeroCanvas"
 import Link from "next/link"
+
+export const dynamic = "force-dynamic"
 
 interface Props {
   params: Promise<{ slug: string }>
@@ -33,13 +36,6 @@ export default async function ProductPage({ params }: Props) {
     [product.id]
   )
 
-  // Extract data from other segments so the hero viz can use real content
-  const featSeg  = segments.find(s => s.type === "features")
-  const stepSeg  = segments.find(s => s.type === "how_it_works")
-  const statSeg  = segments.find(s => s.type === "stats")
-  const features = (featSeg?.content as FeaturesContent | undefined)?.features ?? []
-  const steps    = (stepSeg?.content as HowItWorksContent | undefined)?.steps   ?? []
-  const stats    = (statSeg?.content as StatsContent | undefined)?.stats         ?? []
 
   return (
     <main className="relative min-h-screen bg-background overflow-x-hidden">
@@ -64,9 +60,6 @@ export default async function ProductPage({ params }: Props) {
                 <HeroBlock
                   key={segment.id}
                   content={segment.content as HeroContent}
-                  features={features}
-                  steps={steps}
-                  stats={stats}
                   productName={product.name}
                 />
               )
@@ -82,6 +75,8 @@ export default async function ProductPage({ params }: Props) {
               return <TestimonialsBlock key={segment.id} content={segment.content as TestimonialsContent} />
             case "cta":
               return <CTABlock key={segment.id} content={segment.content as CTAContent} />
+            case "map":
+              return <MapBlock key={segment.id} content={segment.content as MapContent} />
             default:
               return null
           }

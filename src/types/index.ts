@@ -8,6 +8,7 @@ export type SegmentType =
   | "stats"
   | "testimonials"
   | "cta"
+  | "map"
 
 export interface Product {
   id: string
@@ -38,7 +39,9 @@ export interface HeroContent {
   subheadline: string
   description: string
   tags: string[]
-  viz_svg?: string   // Claude-generated animated SVG, stored after build
+  logo_url?: string  // product logo, displayed in place of viz on hero right side
+  viz_svg?: string   // legacy
+  viz_url?: string   // legacy
 }
 
 export interface PreviewContent {
@@ -61,6 +64,15 @@ export interface HowItWorksContent {
     title: string
     description: string
   }[]
+  flow_svg?: string  // programmatic animated flow diagram
+}
+
+export interface MapContent {
+  label?: string
+  countries: string[]                                   // ISO alpha-2 codes to highlight
+  cities: { name: string; coordinates: [number, number] }[]  // [lng, lat]
+  center: [number, number]                              // [lng, lat]
+  scale: number                                         // projection scale (800 = world, 3000 = country)
 }
 
 export interface StatsContent {
@@ -95,6 +107,7 @@ export type SegmentContent =
   | StatsContent
   | TestimonialsContent
   | CTAContent
+  | MapContent
 
 // AI session types
 

@@ -15,6 +15,18 @@ export default function HowItWorksBlock({ content }: { content: HowItWorksConten
           <span className="font-mono text-xs text-amber uppercase tracking-widest">How it works</span>
           <div className="rule-amber flex-1" />
         </div>
+
+        {/* Flow diagram */}
+        {content.flow_svg && (
+          <motion.div
+            className="mb-16 w-full overflow-hidden"
+            initial={{ opacity: 0, y: 8 }} animate={isInView ? { opacity: 1, y: 0 } : {}}
+            transition={{ duration: 0.5 }}
+            dangerouslySetInnerHTML={{ __html: content.flow_svg }}
+          />
+        )}
+
+        {/* Step details */}
         <div className="flex flex-col gap-0 max-w-2xl">
           {content.steps.map((step, i) => (
             <motion.div

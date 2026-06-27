@@ -8,11 +8,12 @@ import type { AIMessage, AIFileAttachment } from "@/types"
 type Phase = "clarifying" | "form_review" | "preview"
 
 interface SegmentMap {
-  hero?: { headline: string; subheadline?: string; description: string; tags: string[]; viz_svg?: string }
+  hero?: { headline: string; subheadline?: string; description: string; tags: string[]; logo_url?: string }
   features?: { features: { title: string; description: string; icon_svg?: string }[] }
-  how_it_works?: { steps: { title: string; description: string }[] }
+  how_it_works?: { steps: { title: string; description: string }[]; flow_svg?: string }
   stats?: { stats: { label: string; value: string; note?: string }[] }
   cta?: { headline: string; description: string; button_label: string; button_url: string }
+  map?: { label?: string; countries: string[]; cities: { name: string; coordinates: [number, number] }[]; center: [number, number]; scale: number }
 }
 
 interface Form {
@@ -191,17 +192,20 @@ export default function AIBuilder({ productId, sessionId, productName, onComplet
         }),
       })
       if (!res.ok) return
-      const { iconSvgs, heroVizSvg } = await res.json()
+      const { iconSvgs, flowSvg, mapData } = await res.json()
       setForm(prev => {
         if (!prev) return prev
         const next = JSON.parse(JSON.stringify(prev)) as Form
         if (next.segments.features && iconSvgs?.length) {
           next.segments.features.features = next.segments.features.features.map(
-            (feat, i) => ({ ...feat, icon_svg: iconSvgs[i] ?? feat.icon_svg })
+            (feat: { title: string; description: string; icon_svg?: string }, i: number) => ({ ...feat, icon_svg: iconSvgs[i] ?? feat.icon_svg })
           )
         }
-        if (next.segments.hero && heroVizSvg) {
-          next.segments.hero.viz_svg = heroVizSvg
+        if (flowSvg && next.segments.how_it_works) {
+          next.segments.how_it_works.flow_svg = flowSvg
+        }
+        if (mapData) {
+          next.segments.map = mapData
         }
         return next
       })
@@ -241,7 +245,7 @@ export default function AIBuilder({ productId, sessionId, productName, onComplet
     if (!form) return
     setSavingPreview(true)
     try {
-      const segmentOrder = ["hero", "preview", "features", "how_it_works", "stats", "testimonials", "cta"] as const
+      const segmentOrder = ["hero", "preview", "features", "how_it_works", "stats", "map", "testimonials", "cta"] as const
       const segments = segmentOrder
         .filter(type => form.segments[type as keyof SegmentMap])
         .map((type, i) => ({

@@ -2,8 +2,8 @@ import { NextRequest, NextResponse } from "next/server"
 import { auth } from "@/lib/auth"
 import { queryOne } from "@/lib/db"
 import Anthropic from "@anthropic-ai/sdk"
-import type { AISession, AIMessage } from "@/types"
-import { renderViz, type VizData } from "@/lib/viz-renderer"
+import type { AISession, AIMessage, MapContent } from "@/types"
+import { renderFlow } from "@/lib/flow-renderer"
 
 const client = new Anthropic()
 
@@ -18,8 +18,8 @@ function sanitizeSvg(svg: string): string {
 
 function parseIcons(text: string, count: number): string[] {
   const icons: string[] = []
-  const iconMatches = text.matchAll(/===ICON:(\d+)===([\s\S]*?)(?====(?:ICON:\d+|END)|$)/g)
-  for (const m of iconMatches) icons[parseInt(m[1]) - 1] = m[2].trim()
+  const matches = text.matchAll(/===ICON:(\d+)===([\s\S]*?)(?====(?:ICON:\d+|END)|$)/g)
+  for (const m of matches) icons[parseInt(m[1]) - 1] = m[2].trim()
   return icons.slice(0, count)
 }
 
@@ -31,14 +31,14 @@ function formatConversation(messages: AIMessage[]): string {
     .join("\n\n")
 }
 
-const STYLE_EXAMPLES = `
-STYLE REFERENCE — real icons from the app. Match this exact visual style:
+const ICON_STYLE = `
+STYLE REFERENCE — real icons from this app. Match exactly:
 
-Example A (shield with check):
+Example A (shield + check — security):
 <path d="M12 2L4 6v5.5C4 16.3 7.6 20.7 12 22c4.4-1.3 8-5.7 8-10.5V6L12 2Z" stroke="#F2843C" strokeWidth="1.2" strokeLinejoin="round" fill="none"/>
 <path d="M9 12l2 2 4-4" stroke="#F2843C" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"/>
 
-Example B (neural node):
+Example B (neural node — AI/processing):
 <circle cx="12" cy="12" r="3" fill="#F2843C" fillOpacity="0.8"/>
 <circle cx="4" cy="7" r="1.8" stroke="#F2843C" strokeWidth="1" opacity="0.6" fill="none"/>
 <circle cx="4" cy="17" r="1.8" stroke="#F2843C" strokeWidth="1" opacity="0.6" fill="none"/>
@@ -47,97 +47,90 @@ Example B (neural node):
 <line x1="5.5" y1="16.5" x2="9.5" y2="13" stroke="#F2843C" strokeWidth="0.9" opacity="0.4"/>
 <line x1="14.5" y1="12" x2="18.2" y2="12" stroke="#F2843C" strokeWidth="0.9" opacity="0.4"/>
 
-Example C (lightning bolt):
+Example C (lightning — speed/action):
 <path d="M13 2L4 13h7l-2 9 11-13h-7L13 2Z" stroke="#F2843C" strokeWidth="1.4" strokeLinejoin="round" fill="none"/>
 
-Style rules: strokeWidth 1.2–1.4 primary, 0.9–1.0 secondary. strokeLinecap="round" strokeLinejoin="round". fill="none" on stroked shapes. fillOpacity ≤ 0.15 for area hints, or 0.8 only on tiny dots r≤3. Coordinates within 2–22.
-`
+Mandatory style: strokeWidth 1.2–1.4 primary, 0.9–1.0 secondary. strokeLinecap="round" strokeLinejoin="round" everywhere. fill="none" on stroked shapes. fillOpacity ≤ 0.15 for area hints (or 0.8 only on tiny dots r ≤ 3). All coordinates within 2–22 (viewBox is 24×24).`
 
 function buildIconPrompt(
-  headline: string, tags: string[], features: { title: string; description: string }[],
+  headline: string,
+  tags: string[],
+  features: { title: string; description: string }[],
   conversationContext: string,
 ): string {
   const featureLines = features
     .map((f, i) => `${i + 1}. TITLE: "${f.title}"\n   DESCRIPTION: ${f.description}`)
     .join("\n\n")
 
-  return `You generate SVG icons for a product showcase page. Background: #08090B. Color: #F2843C only.
+  return `You create SVG icons for a product showcase page. Background: #08090B. Color: #F2843C only.
 
 PRODUCT: ${headline} (${tags.join(", ")})
 
-FULL CONVERSATION (product domain context):
+FULL CONVERSATION (ground truth about this product):
 ${conversationContext || "(not available)"}
 
-${STYLE_EXAMPLES}
+${ICON_STYLE}
 
-Generate ${features.length} icons. Each must represent the specific feature below — not software generically.
+Generate ${features.length} icons. Each must visually represent the specific feature's real-world action — not a generic software icon.
 
-Icon design process:
-1. Read both title AND description
-2. Identify the real-world action at the core of this feature
-3. Draw that action with minimal SVG primitives, readable at 28×28px
-4. Match the style examples exactly
+Process: read title + description → identify the concrete action or object → draw it in the style above.
+
+RULES:
+- Inner elements only, no <svg> wrapper (page provides viewBox="0 0 24 24")
+- Elements: <path> <circle> <rect> <line> <polyline> <polygon>
+- No animations, no <style>, no <defs>, no <g>
+- 4–8 elements per icon
 
 FEATURES:
 ${featureLines}
 
-RULES:
-- Return ONLY inner elements (no <svg> wrapper — page provides viewBox="0 0 24 24")
-- Elements: <path> <circle> <rect> <line> <polyline> <polygon>
-- Attributes: d, cx, cy, r, x, y, x1, y1, x2, y2, width, height, rx, ry, points, fill, stroke, strokeWidth, strokeLinecap, strokeLinejoin, strokeDasharray, opacity, fillOpacity
-- stroke="#F2843C" or fill="#F2843C" only — no other colors
-- No animations, no <style>, no <defs>, no <g>
-- 4–8 elements per icon
+Return in EXACTLY this format (no markdown):
 
-Format (no JSON, no markdown):
 ===ICON:1===
-[elements for feature 1]
+[inner elements for feature 1]
 ===ICON:2===
-[elements for feature 2]
+[inner elements for feature 2]
 [continue for all ${features.length} features]
 ===END===`
 }
 
-function buildVizDataPrompt(
-  headline: string, tags: string[], description: string,
-  steps: { title: string }[], stats: { label: string; value: string }[],
-  conversationContext: string,
-): string {
-  const stepsText = steps.map((s, i) => `${i + 1}. ${s.title}`).join(" → ")
-  const statsText = stats.map(s => `${s.label}: ${s.value}`).join(" | ")
+function buildMapPrompt(headline: string, conversationContext: string): string {
+  return `Extract geographic coverage data from this product conversation. Return ONLY valid JSON, no markdown.
 
-  return `You are choosing a visualization for an investor-facing product showcase page.
+PRODUCT: ${headline}
 
-PRODUCT
-Headline: ${headline}
-Tags: ${tags.join(", ")}
-Description: ${description}
-${stepsText ? `Process: ${stepsText}` : ""}
-${statsText ? `Stats: ${statsText}` : ""}
-
-FULL CONVERSATION (admin's own words — use this for real entity names and domain details):
+CONVERSATION:
 ${conversationContext || "(not available)"}
 
-Choose the visualization type that best shows what makes this product valuable to an investor in 5 seconds.
+Instructions:
+- Identify which countries or regions this product currently operates in (not planned future expansion)
+- List major cities/locations mentioned (with accurate real-world coordinates)
+- Choose a map center and scale that frames the coverage area well
 
-PIPELINE — sequential process with clear stages (order fulfillment, document processing, workflows): 3–4 stages
-DASHBOARD — metric comparison where numbers tell the story (analytics, growth, performance): 3–4 bars
-RADIAL — hub connecting multiple parties or services (platforms, integrations, networks): 4–5 nodes
+Scale guide:
+- Single country (small): scale 2500–4000
+- Single country (large, e.g. US): scale 800–1200
+- Regional cluster (e.g. Central Europe): scale 600–900
+- Continent: scale 300–500
+- World: scale 150
 
-Return ONLY valid JSON, no markdown, no explanation:
+Return this JSON shape:
 {
-  "type": "pipeline" | "dashboard" | "radial",
-  "title": "what is shown — MAX 20 CHARS",
-  "stages": [{"label": "MAX 9 CHARS", "sublabel": "MAX 11 CHARS optional"}],
-  "bars": [{"label": "MAX 8 CHARS", "value": "MAX 8 CHARS display", "numericValue": 42}],
-  "hub": "MAX 9 CHARS",
-  "nodes": [{"label": "MAX 9 CHARS", "sublabel": "MAX 11 CHARS optional"}],
-  "stats": [{"label": "MAX 9 CHARS", "value": "MAX 9 CHARS"}]
+  "label": "Coverage Area",
+  "countries": ["PL"],
+  "cities": [
+    { "name": "Katowice", "coordinates": [19.027, 50.257] },
+    { "name": "Gliwice", "coordinates": [18.670, 50.292] }
+  ],
+  "center": [19.5, 50.8],
+  "scale": 3000
 }
 
-Include only the fields for your chosen type. stats is optional (max 3) — include if good data exists.
-Use real labels from the product: actual step names, actual metric names, actual entity types.
-All text will be hard-truncated if it exceeds the char limit — stay within them.`
+Rules:
+- countries: ISO alpha-2 codes only
+- coordinates: [longitude, latitude] — must be accurate real-world values
+- Only include cities explicitly mentioned in the conversation
+- If product has no geographic scope, return { "countries": [], "cities": [], "center": [0, 20], "scale": 150 }`
 }
 
 export async function POST(req: NextRequest) {
@@ -146,11 +139,10 @@ export async function POST(req: NextRequest) {
 
   const {
     sessionId,
-    headline = "", tags = [], description = "",
-    features = [], steps = [], stats = [],
+    headline = "", tags = [],
+    features = [], steps = [],
   } = await req.json()
 
-  // Fetch the full clarification conversation
   let conversationContext = ""
   if (sessionId) {
     const aiSession = await queryOne<AISession>(
@@ -162,34 +154,40 @@ export async function POST(req: NextRequest) {
     }
   }
 
-  // Run icon generation and viz data extraction in parallel
-  const [iconMsg, vizMsg] = await Promise.all([
-    client.messages.create({
-      model: "claude-sonnet-4-6",
-      max_tokens: 6000,
-      messages: [{ role: "user", content: buildIconPrompt(headline, tags, features, conversationContext) }],
-    }),
+  // Run icon generation and map extraction in parallel
+  const [iconMsg, mapMsg] = await Promise.all([
+    features.length > 0
+      ? client.messages.create({
+          model: "claude-sonnet-4-6",
+          max_tokens: 6000,
+          messages: [{ role: "user", content: buildIconPrompt(headline, tags, features, conversationContext) }],
+        })
+      : Promise.resolve(null),
     client.messages.create({
       model: "claude-sonnet-4-6",
       max_tokens: 600,
-      messages: [{ role: "user", content: buildVizDataPrompt(headline, tags, description, steps, stats, conversationContext) }],
+      messages: [{ role: "user", content: buildMapPrompt(headline, conversationContext) }],
     }),
   ])
 
   // Parse icons
-  const iconRaw  = iconMsg.content[0].type === "text" ? iconMsg.content[0].text : ""
-  const iconSvgs = parseIcons(iconRaw, features.length).map(sanitizeSvg)
+  const iconSvgs = iconMsg
+    ? parseIcons(iconMsg.content[0].type === "text" ? iconMsg.content[0].text : "", features.length).map(sanitizeSvg)
+    : []
 
-  // Parse viz data and render SVG programmatically
-  let heroVizSvg = ""
+  // Generate flow SVG programmatically
+  const flowSvg = steps.length > 0 ? renderFlow(steps) : undefined
+
+  // Parse map data
+  let mapData: MapContent | undefined
   try {
-    const vizRaw  = vizMsg.content[0].type === "text" ? vizMsg.content[0].text : ""
-    const jsonStr = vizRaw.replace(/```json\s*/g, "").replace(/```\s*/g, "").trim()
-    const vizData = JSON.parse(jsonStr) as VizData
-    heroVizSvg = renderViz(vizData)
+    const mapRaw = mapMsg.content[0].type === "text" ? mapMsg.content[0].text : ""
+    const jsonStr = mapRaw.replace(/```json\s*/g, "").replace(/```\s*/g, "").trim()
+    const parsed = JSON.parse(jsonStr) as MapContent
+    if (parsed.countries?.length > 0 || parsed.cities?.length > 0) mapData = parsed
   } catch {
-    // Non-fatal: page falls back to computed viz
+    // Non-fatal
   }
 
-  return NextResponse.json({ iconSvgs, heroVizSvg })
+  return NextResponse.json({ iconSvgs, flowSvg, mapData })
 }

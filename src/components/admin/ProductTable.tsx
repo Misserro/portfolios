@@ -1,6 +1,7 @@
 "use client"
 
 import { useState } from "react"
+import { useRouter } from "next/navigation"
 import { motion, AnimatePresence } from "framer-motion"
 import { toast } from "sonner"
 import type { Product, ProductStatus } from "@/types"
@@ -24,6 +25,7 @@ const STATUS_COLOR: Record<ProductStatus, string> = {
 }
 
 export default function ProductTable({ initialProducts }: { initialProducts: Product[] }) {
+  const router = useRouter()
   const [products, setProducts]     = useState(initialProducts)
   const [cycling, setCycling]       = useState<string | null>(null)
   const [deleting, setDeleting]     = useState<string | null>(null)
@@ -40,6 +42,7 @@ export default function ProductTable({ initialProducts }: { initialProducts: Pro
       })
       if (!res.ok) throw new Error((await res.json()).error ?? "Failed")
       toast.success(`${product.name} — visuals regenerated`)
+      router.refresh()
     } catch (e) {
       toast.error((e as Error).message ?? "Regeneration failed")
     } finally {
