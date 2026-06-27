@@ -5,6 +5,7 @@ import { motion, useInView } from "framer-motion"
 import Header from "@/components/layout/Header"
 import AdminLoginModal from "@/components/layout/AdminLoginModal"
 import ProductStrip from "@/components/ProductStrip"
+import HeroCanvas from "@/components/HeroCanvas"
 import type { Product } from "@/types"
 
 export default function HomePage() {
@@ -30,7 +31,9 @@ export default function HomePage() {
 
       {/* ── Hero ── */}
       <section className="relative overflow-hidden">
-        {/* Ambient bloom — the signature element */}
+        {/* Particle field */}
+        <HeroCanvas />
+        {/* Ambient bloom behind the headline */}
         <div className="hero-bloom" aria-hidden="true" />
 
         <div className="relative z-10 max-w-6xl mx-auto px-8 pt-32 pb-28">

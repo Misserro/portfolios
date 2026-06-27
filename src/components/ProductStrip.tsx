@@ -1,6 +1,6 @@
 "use client"
 
-import { useRef } from "react"
+import { useRef, useCallback } from "react"
 import { motion, useInView } from "framer-motion"
 import Link from "next/link"
 import type { Product } from "@/types"
@@ -8,6 +8,25 @@ import type { Product } from "@/types"
 interface Props {
   product: Product
   index: number
+}
+
+function useTilt() {
+  const ref = useRef<HTMLDivElement>(null)
+
+  const onMove = useCallback((e: React.PointerEvent) => {
+    const el = ref.current
+    if (!el) return
+    const rect = el.getBoundingClientRect()
+    const px = (e.clientX - rect.left) / rect.width
+    const py = (e.clientY - rect.top) / rect.height
+    el.style.transform = `perspective(800px) rotateY(${(px - 0.5) * 8}deg) rotateX(${(0.5 - py) * 8}deg) scale(1.02)`
+  }, [])
+
+  const onLeave = useCallback(() => {
+    if (ref.current) ref.current.style.transform = ""
+  }, [])
+
+  return { ref, onMove, onLeave }
 }
 
 // Four abstract SVG visualizations — cycle by product index
@@ -93,6 +112,7 @@ function ProductViz({ index }: { index: number }) {
 export default function ProductStrip({ product, index }: Props) {
   const ref = useRef(null)
   const isInView = useInView(ref, { once: true, margin: "-40px" })
+  const tilt = useTilt()
 
   return (
     <motion.div
@@ -141,9 +161,15 @@ export default function ProductStrip({ product, index }: Props) {
             </div>
           </div>
 
-          {/* Visualization — right */}
+          {/* Visualization — right, tilt applied here only */}
           <div className="shrink-0 w-[200px] h-[130px] hidden sm:flex items-center justify-center self-center">
-            <div className="w-full h-full relative overflow-hidden border border-border/40 group-hover:border-amber/20 transition-colors duration-500">
+            <div
+              ref={tilt.ref}
+              onPointerMove={tilt.onMove}
+              onPointerLeave={tilt.onLeave}
+              style={{ transition: "transform 0.1s ease-out" }}
+              className="w-full h-full relative overflow-hidden border border-border/40 group-hover:border-amber/20 transition-colors duration-500"
+            >
               {/* Subtle corner marks */}
               <span className="absolute top-0 left-0 w-2 h-px bg-amber/40" />
               <span className="absolute top-0 left-0 w-px h-2 bg-amber/40" />
