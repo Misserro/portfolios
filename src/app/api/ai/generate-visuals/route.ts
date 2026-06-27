@@ -96,14 +96,17 @@ export async function POST(req: NextRequest) {
   const stepsText = steps.map((s: { title: string }, i: number) =>
     `${i + 1}. ${s.title}`).join("  →  ")
 
-  const prompt = `You generate SVG visual assets for a product showcase page. This page is embedded in an app with a near-black #08090B background and a single accent color #F2843C (amber/orange). Your visuals must feel native to this design — not generic tech graphics dropped in from somewhere else.
+  const prompt = `You generate SVG visual assets for a product showcase page aimed at investors and enterprise clients. Every visual must look investor-grade: clean, minimal, precise, and immediately readable.
 
-COLOR AND STYLE RULES (non-negotiable)
-- Background context: #08090B (near-black). Your SVGs are placed on this background.
-- Only color permitted: #F2843C at varying opacities
-- No other colors, no gradients, no white, no grey, no blue
-- Font: fontFamily="monospace" for all text labels
-- Clean, minimal, architectural — not decorative, not playful
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+GLOBAL STYLE RULES (apply to ALL tasks)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+- Background: #08090B (near-black). Your SVGs sit on this background.
+- Only permitted color: #F2843C (amber) at varying opacities. No other color, no white, no grey, no gradients.
+- All text: fontFamily="monospace"
+- Aesthetic: architectural, minimal, precise. Not decorative. Not playful.
+- FILLS: Only tiny focal dots (r ≤ 4) may use fillOpacity > 0.3. Any shape larger than that must be stroke-only (fill="none") or fillOpacity ≤ 0.08. No solid filled rectangles or large shapes ever.
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 PRODUCT CONTEXT
@@ -141,7 +144,7 @@ Good icon thinking: "this feature schedules pickup slots in a 2-hour window → 
 FEATURES TO ICONIFY:
 ${featureLines}
 
-STRICT TECHNICAL RULES
+STRICT TECHNICAL RULES FOR ICONS
 - Return ONLY inner SVG elements (no <svg> wrapper — the page provides viewBox="0 0 24 24")
 - Permitted elements: <path> <circle> <rect> <line> <polyline> <polygon>
 - Permitted attributes: d, cx, cy, r, x, y, x1, y1, x2, y2, width, height, rx, ry, points, fill, stroke, strokeWidth, strokeLinecap, strokeLinejoin, strokeDasharray, opacity, fillOpacity
@@ -150,58 +153,77 @@ STRICT TECHNICAL RULES
 - 4–8 elements per icon
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-TASK B — HERO VISUALIZATION (480×380)
+TASK B — HERO VISUALIZATION
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-Design a single animated SVG that communicates exactly what this specific product does — as if you opened the product and watched it work for 5 seconds.
+CANVAS: exactly 480 wide × 380 tall pixels. viewBox="0 0 480 380".
 
-WHAT THIS MEANS IN PRACTICE
-You have read the full conversation above. You now know the real domain, the real workflow, and the real data. Use all of it. The visualization should feel like a live window into this specific product, not an illustration of "software" or a generic dashboard.
+SPATIAL BUDGET — you have room for:
+  • 1 title label (optional, max 24 chars, top area)
+  • 3–5 primary elements (the things being shown — nodes, bars, stages)
+  • 2–4 connector elements (lines, arrows between primary elements)
+  • 3–6 short text labels (max 12 chars each, attached to primary elements)
+  • 1–2 supporting stat values (optional, bottom area)
+  Total: 10–15 SVG elements maximum. If you need more, your concept is too complex — simplify.
 
-Ask yourself: if someone who had never heard of this product watched this animation for 5 seconds, would they understand the core value? Would they see REAL things from this product — its actual steps, its actual entities, its actual numbers — moving and doing something?
+SAFE ZONES
+  • No element, shape, or text may exceed these boundaries:
+    x: 16 to 464 (leave 16px margin each side)
+    y: 16 to 364 (leave 16px margin top and bottom)
+  • Text x position: account for text width. A 12-char monospace label at fontSize=9 is ~72px wide.
+    Place text anchors so the full string stays inside x=16–464.
+  • Plan every element's position before writing SVG. If two elements are within 20px of each other, one of them moves.
+
+NO OVERLAPPING — ABSOLUTE RULE
+  Before finalising your SVG, check every element against every other element. No text may sit on top of a shape. No shape may obscure a label. No two labels within 14px vertically. If anything would overlap, remove or reposition it. A viz with 4 clean elements is better than 10 cluttered ones.
+
+NO PICTOGRAMS
+  Do not draw recognisable real-world objects (no houses, phones, boxes, trucks, people). Use abstract geometric elements: stroke-only circles as nodes, stroke-only rects as stage boxes, lines as connections, small filled dots (r≤4) as data points or indicators. Label them with text instead of trying to draw what they represent.
+
+WHAT TO SHOW
+  Read the product context and conversation above. Choose ONE core action of this product — the thing that happens repeatedly, the thing that creates value — and show it happening. Not everything the product does. Just the one thing that, if an investor saw it, they'd immediately understand why this product exists.
+
+  The visualization should feel like a live window into this product in operation. Use real labels from the product data: actual step names, actual stat values, actual entity names mentioned in the conversation.
 
 ANIMATION PRINCIPLE
-Every animated element must represent a real action in this product. A dot moving across a line must represent something real moving (a document, a payment, a request). A value changing must be a real metric updating. An element appearing must represent something being created or completed. If an animation is purely decorative — it has no semantic meaning in the product — remove it.
+  Every animated element must represent a real action in this product. A dot moving across a line must represent something actually moving (a request, a payment, an item). A value fading in must represent data arriving. Purely decorative animation is removed. Fewer, meaningful animations > many meaningless ones.
 
-VISUAL QUALITY BAR
-- One dominant focal element that immediately communicates the product's core action
-- Supporting elements that show the context and scale of the operation
-- Text labels drawn from real product data (actual step names, actual stat values, actual entity names from the conversation)
-- Entry animations 0.5–2s, ambient loops 2–5s — nothing frantic, nothing sluggish
-- Labels legible: fontSize 8–11, fontFamily="monospace"
+  Entry animations: 0.4–1.2s duration, fill="freeze"
+  Ambient loops: 2–4s duration, repeatCount="indefinite"
+  Stagger entry delays: 0s, 0.3s, 0.6s, 0.9s… (not all at once)
 
-SMIL ANIMATION PATTERNS (use these — NOT CSS @keyframes, which leak from inline SVG into the page):
+SMIL ANIMATION PATTERNS (SMIL only — CSS @keyframes leak into the page):
 
 Fade in:
-  <animate attributeName="opacity" from="0" to="0.75" dur="0.8s" fill="freeze" begin="0.4s"/>
+  <animate attributeName="opacity" from="0" to="0.7" dur="0.7s" fill="freeze" begin="0.3s"/>
 
-Grow bar upward:
-  <animate attributeName="height" from="0" to="90" dur="1.1s" fill="freeze" begin="0.6s" calcMode="spline" keySplines="0.25 0.1 0.25 1"/>
-  <animate attributeName="y" from="280" to="190" dur="1.1s" fill="freeze" begin="0.6s" calcMode="spline" keySplines="0.25 0.1 0.25 1"/>
+Grow bar upward (set initial height="0" y=baseline on the rect):
+  <animate attributeName="height" from="0" to="80" dur="1s" fill="freeze" begin="0.5s" calcMode="spline" keySplines="0.25 0.1 0.25 1"/>
+  <animate attributeName="y" from="240" to="160" dur="1s" fill="freeze" begin="0.5s" calcMode="spline" keySplines="0.25 0.1 0.25 1"/>
 
 Pulse loop:
-  <animate attributeName="opacity" values="0.9;0.2;0.9" dur="2.4s" repeatCount="indefinite"/>
+  <animate attributeName="opacity" values="0.8;0.2;0.8" dur="2.4s" repeatCount="indefinite"/>
 
-Move element along a path:
-  <animateMotion dur="2s" repeatCount="indefinite" calcMode="linear">
-    <mpath href="#my-path"/>
-  </animateMotion>
+Move element along a defined path:
+  <path id="flow" d="M 60 190 L 420 190" stroke="none" fill="none"/>
+  <circle r="3" fill="#F2843C">
+    <animateMotion dur="2.2s" repeatCount="indefinite" calcMode="linear">
+      <mpath href="#flow"/>
+    </animateMotion>
+  </circle>
 
-Draw a line:
-  <animate attributeName="stroke-dashoffset" from="200" to="0" dur="1s" fill="freeze" begin="0.5s"/>
-  (set strokeDasharray on the element equal to its approximate length)
+Draw a line progressively:
+  <line x1="60" y1="190" x2="420" y2="190" stroke="#F2843C" strokeWidth="0.8" strokeDasharray="360" strokeDashoffset="360" opacity="0.3">
+    <animate attributeName="stroke-dashoffset" from="360" to="0" dur="1s" fill="freeze" begin="0.4s"/>
+  </line>
 
-Transform rotation:
-  <animateTransform attributeName="transform" type="rotate" from="0 240 190" to="360 240 190" dur="8s" repeatCount="indefinite"/>
-
-STRICT TECHNICAL RULES
+STRICT TECHNICAL RULES FOR VIZ
 - Return complete <svg viewBox="0 0 480 380"> element
-- SMIL only: <animate>, <animateTransform>, <animateMotion> — never CSS @keyframes or <style>
+- SMIL only: <animate>, <animateTransform>, <animateMotion>
 - All begin= values: "Xs" format (e.g. "0s", "0.5s") — no event triggers
-- No <script>, no event handlers, no <image>, no <use> referencing external URLs
-- <defs> allowed (for path definitions used by <animateMotion><mpath>)
-- <g> allowed for grouping
-- Self-contained, works inline in an HTML page
+- <defs> and <g> are allowed
+- No <script>, no event handlers, no CSS @keyframes, no <style>, no <image>, no external <use>
+- Self-contained, works inline in HTML
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
