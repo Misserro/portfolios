@@ -24,10 +24,28 @@ const STATUS_COLOR: Record<ProductStatus, string> = {
 }
 
 export default function ProductTable({ initialProducts }: { initialProducts: Product[] }) {
-  const [products, setProducts] = useState(initialProducts)
-  const [cycling, setCycling]   = useState<string | null>(null)
-  const [deleting, setDeleting] = useState<string | null>(null)
-  const [confirm, setConfirm]   = useState<string | null>(null)
+  const [products, setProducts]     = useState(initialProducts)
+  const [cycling, setCycling]       = useState<string | null>(null)
+  const [deleting, setDeleting]     = useState<string | null>(null)
+  const [confirm, setConfirm]       = useState<string | null>(null)
+  const [regenning, setRegenning]   = useState<string | null>(null)
+
+  async function regenerateVisuals(product: Product) {
+    setRegenning(product.id)
+    try {
+      const res = await fetch("/api/admin/regenerate-visuals", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ productId: product.id }),
+      })
+      if (!res.ok) throw new Error((await res.json()).error ?? "Failed")
+      toast.success(`${product.name} — visuals regenerated`)
+    } catch (e) {
+      toast.error((e as Error).message ?? "Regeneration failed")
+    } finally {
+      setRegenning(null)
+    }
+  }
 
   async function cycleStatus(product: Product) {
     const next = STATUS_CYCLE[product.status]
@@ -77,8 +95,8 @@ export default function ProductTable({ initialProducts }: { initialProducts: Pro
   return (
     <div className="flex flex-col">
       {/* Column headers */}
-      <div className="grid grid-cols-[2rem_1fr_5rem_5rem_4rem] gap-x-6 items-center pb-3 border-b border-border">
-        {["#", "Product", "Status", "", ""].map((h, i) => (
+      <div className="grid grid-cols-[2rem_1fr_5rem_4rem_5rem_4rem] gap-x-6 items-center pb-3 border-b border-border">
+        {["#", "Product", "Status", "", "", ""].map((h, i) => (
           <span key={i} className="font-mono text-xs text-slate uppercase tracking-widest">{h}</span>
         ))}
       </div>
@@ -92,7 +110,7 @@ export default function ProductTable({ initialProducts }: { initialProducts: Pro
             animate={{ opacity: 1 }}
             exit={{ opacity: 0, height: 0 }}
             transition={{ duration: 0.2 }}
-            className="grid grid-cols-[2rem_1fr_5rem_5rem_4rem] gap-x-6 items-center py-5 border-b border-border group"
+            className="grid grid-cols-[2rem_1fr_5rem_4rem_5rem_4rem] gap-x-6 items-center py-5 border-b border-border group"
           >
             {/* Index */}
             <span className="font-mono text-xs text-slate tabular-nums select-none">
@@ -126,6 +144,16 @@ export default function ProductTable({ initialProducts }: { initialProducts: Pro
             >
               edit →
             </a>
+
+            {/* Regenerate visuals */}
+            <button
+              onClick={() => regenerateVisuals(product)}
+              disabled={regenning === product.id}
+              title="Regenerate icons and hero visualization"
+              className="font-mono text-xs text-slate hover:text-amber transition-colors disabled:opacity-40"
+            >
+              {regenning === product.id ? "…" : "↺ viz"}
+            </button>
 
             {/* Delete */}
             <div className="flex items-center justify-end">
