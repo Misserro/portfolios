@@ -1,12 +1,19 @@
 "use client"
 
 import Link from "next/link"
-import { useRouter } from "next/navigation"
+import { usePathname, useRouter } from "next/navigation"
 import { signOut } from "@/lib/auth-client"
 import { toast } from "sonner"
 
 export default function AdminNav() {
   const router = useRouter()
+  const pathname = usePathname()
+
+  const crumb = pathname === "/admin"
+    ? null
+    : pathname === "/admin/new"
+    ? "New product"
+    : "Edit product"
 
   async function handleSignOut() {
     await signOut()
@@ -15,21 +22,28 @@ export default function AdminNav() {
   }
 
   return (
-    <header className="border-b border-border px-8 py-4 flex items-center justify-between">
-      <div className="flex items-center gap-6">
-        <Link href="/" className="font-display text-base font-bold text-foreground hover:text-amber transition-colors">
+    <header className="border-b border-border px-8 py-4 flex items-center justify-between shrink-0">
+      <div className="flex items-center gap-2 font-mono text-xs">
+        <Link href="/" className="text-slate hover:text-foreground transition-colors">
           sfer<span className="text-amber">.</span>
         </Link>
-        <div className="w-px h-4 bg-border" />
-        <Link href="/admin" className="font-mono text-xs text-slate hover:text-foreground transition-colors uppercase tracking-wider">
-          Dashboard
+        <span className="text-border">·</span>
+        <Link href="/admin" className={crumb ? "text-slate hover:text-foreground transition-colors" : "text-foreground"}>
+          control
         </Link>
+        {crumb && (
+          <>
+            <span className="text-border">·</span>
+            <span className="text-foreground">{crumb}</span>
+          </>
+        )}
       </div>
+
       <button
         onClick={handleSignOut}
-        className="font-mono text-xs text-slate hover:text-foreground transition-colors uppercase tracking-wider"
+        className="font-mono text-xs text-slate hover:text-foreground transition-colors"
       >
-        Sign out
+        sign out
       </button>
     </header>
   )

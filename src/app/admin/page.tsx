@@ -1,6 +1,7 @@
 import { query } from "@/lib/db"
 import type { Product } from "@/types"
 import ProductTable from "@/components/admin/ProductTable"
+import Link from "next/link"
 
 export const dynamic = "force-dynamic"
 
@@ -10,22 +11,23 @@ export default async function AdminDashboard() {
   )
 
   return (
-    <div className="flex flex-col gap-10">
-      <div className="flex items-end justify-between">
+    <div className="flex flex-col gap-8">
+      <div className="flex items-end justify-between border-b border-border pb-8">
         <div>
-          <p className="font-mono text-xs text-amber uppercase tracking-widest mb-2">Dashboard</p>
-          <h1 className="font-display text-3xl font-bold text-foreground">Products</h1>
+          <span className="font-mono text-xs text-slate uppercase tracking-widest block mb-2">
+            {products.length} {products.length === 1 ? "product" : "products"}
+          </span>
+          <h1 className="font-display text-4xl font-extrabold text-foreground leading-none">
+            Products
+          </h1>
         </div>
-        <a
+        <Link
           href="/admin/new"
-          className="flex items-center gap-2 bg-amber text-background font-display font-bold text-sm px-5 py-2.5 rounded hover:bg-amber/90 transition-colors"
+          className="font-mono text-xs bg-amber text-background px-4 py-2.5 rounded-sm font-bold hover:bg-amber/90 transition-colors"
         >
-          <span>+</span>
-          <span>Add product</span>
-        </a>
+          + New product
+        </Link>
       </div>
-
-      <div className="rule-amber w-full" />
 
       <ProductTable initialProducts={products} />
     </div>
