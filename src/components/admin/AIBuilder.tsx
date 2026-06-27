@@ -45,6 +45,10 @@ export default function AIBuilder({ productId, sessionId, productName, onComplet
   const [publishing, setPublishing]     = useState(false)
   const [uploadingFile, setUploadingFile] = useState(false)
   const [revealedFields, setRevealedFields] = useState<Set<string>>(new Set())
+  const [urlOpen, setUrlOpen]         = useState(false)
+  const [urlInput, setUrlInput]       = useState("")
+  const [scrapingUrl, setScrapingUrl] = useState(false)
+  const [urlError, setUrlError]       = useState("")
 
   // Phase 3 state
   const [previewSlug, setPreviewSlug]             = useState("")
@@ -137,6 +141,29 @@ export default function AIBuilder({ productId, sessionId, productName, onComplet
       }
     } catch { toast.error("Upload failed") }
     finally { setUploadingFile(false); if (fileRef.current) fileRef.current.value = "" }
+  }
+
+  async function handleScrape(e: React.FormEvent) {
+    e.preventDefault()
+    const trimmed = urlInput.trim()
+    if (!trimmed) return
+    setScrapingUrl(true)
+    setUrlError("")
+    try {
+      const res = await fetch("/api/scrape", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ url: trimmed }),
+      })
+      const data = await res.json()
+      if (!res.ok) { setUrlError(data.error ?? "Failed to fetch"); return }
+      await sendMessage(
+        `Here is the content scraped from "${data.title || trimmed}" (${trimmed}):\n\n${data.text}`
+      )
+      setUrlOpen(false)
+      setUrlInput("")
+    } catch { setUrlError("Network error — try again") }
+    finally { setScrapingUrl(false) }
   }
 
   async function handleGenerateForm() {
@@ -457,7 +484,44 @@ export default function AIBuilder({ productId, sessionId, productName, onComplet
           </div>
 
           {/* Input */}
-          <div className="border-t border-border pt-4 shrink-0">
+          <div className="border-t border-border pt-4 shrink-0 flex flex-col gap-2">
+            {/* URL row */}
+            <AnimatePresence>
+              {urlOpen && (
+                <motion.form
+                  onSubmit={handleScrape}
+                  initial={{ opacity: 0, height: 0 }}
+                  animate={{ opacity: 1, height: "auto" }}
+                  exit={{ opacity: 0, height: 0 }}
+                  transition={{ duration: 0.2 }}
+                  className="overflow-hidden"
+                >
+                  <div className="flex gap-2 items-center mb-2">
+                    <input
+                      type="url"
+                      value={urlInput}
+                      onChange={e => { setUrlInput(e.target.value); setUrlError("") }}
+                      placeholder="https://…"
+                      autoFocus
+                      disabled={scrapingUrl}
+                      className="flex-1 bg-input border border-amber/20 rounded-sm px-3 py-2 font-mono text-xs text-foreground placeholder:text-slate/40 focus:outline-none focus:border-amber/40 transition-colors disabled:opacity-40"
+                    />
+                    <button type="submit" disabled={!urlInput.trim() || scrapingUrl}
+                      className="font-mono text-xs border border-amber/30 text-amber px-3 py-2 rounded-sm hover:bg-amber/10 transition-colors disabled:opacity-30 shrink-0">
+                      {scrapingUrl ? "…" : "fetch"}
+                    </button>
+                    <button type="button" onClick={() => { setUrlOpen(false); setUrlInput(""); setUrlError("") }}
+                      className="font-mono text-xs text-slate/50 hover:text-slate transition-colors px-1">
+                      ✕
+                    </button>
+                  </div>
+                  {urlError && (
+                    <p className="font-mono text-[10px] text-coral/80 mb-1">{urlError}</p>
+                  )}
+                </motion.form>
+              )}
+            </AnimatePresence>
+
             <form onSubmit={handleSubmit} className="flex gap-2 items-end">
               <textarea
                 value={input}
@@ -472,6 +536,12 @@ export default function AIBuilder({ productId, sessionId, productName, onComplet
                   disabled={uploadingFile || streaming}
                   className="font-mono text-xs border border-border text-slate px-3 py-2.5 rounded-sm hover:text-foreground transition-colors disabled:opacity-40">
                   {uploadingFile ? "…" : "↑"}
+                </button>
+                <button type="button"
+                  onClick={() => { setUrlOpen(v => !v); setUrlError("") }}
+                  disabled={streaming}
+                  className={`font-mono text-xs border px-3 py-2.5 rounded-sm transition-colors disabled:opacity-40 ${urlOpen ? "border-amber/40 text-amber bg-amber/8" : "border-border text-slate hover:text-foreground"}`}>
+                  ↗
                 </button>
                 <button type="submit" disabled={!input.trim() || streaming}
                   className="font-mono text-xs bg-amber text-background px-3 py-2.5 rounded-sm font-bold hover:bg-amber/90 transition-colors disabled:opacity-40">
