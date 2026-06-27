@@ -4,7 +4,7 @@ import { useState, useEffect } from "react"
 import { motion } from "framer-motion"
 import Header from "@/components/layout/Header"
 import AdminLoginModal from "@/components/layout/AdminLoginModal"
-import ProductCard from "@/components/ProductCard"
+import ProductStrip from "@/components/ProductStrip"
 import type { Product } from "@/types"
 
 export default function HomePage() {
@@ -20,56 +20,57 @@ export default function HomePage() {
 
   return (
     <main className="relative min-h-screen">
-      <div className="pointer-events-none fixed inset-0 grid-background opacity-60" />
+      <div className="pointer-events-none fixed inset-0 dot-grid" />
 
       <Header onAdminTrigger={() => setAdminOpen(true)} />
       <AdminLoginModal open={adminOpen} onClose={() => setAdminOpen(false)} />
 
       {/* Hero */}
-      <section className="relative z-10 flex flex-col items-center justify-center text-center px-6 pt-32 pb-24">
+      <section className="relative z-10 px-8 pt-32 pb-20 max-w-5xl">
         <motion.p
-          className="font-mono text-xs tracking-[0.3em] text-cyan uppercase mb-6"
-          initial={{ opacity: 0, y: 12 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5 }}
+          className="font-mono text-xs tracking-[0.25em] text-amber uppercase mb-8"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ duration: 0.6 }}
         >
-          sfer.co — product showcase
+          sfer.co — built work
         </motion.p>
         <motion.h1
-          className="font-display text-5xl sm:text-7xl font-bold tracking-tight text-white leading-[1.05] max-w-4xl"
-          initial={{ opacity: 0, y: 24 }}
+          className="font-display text-6xl sm:text-8xl font-extrabold tracking-tight text-foreground leading-[0.95]"
+          initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.6, delay: 0.1 }}
+          transition={{ duration: 0.7, delay: 0.1 }}
         >
-          Products built to{" "}
-          <span className="text-cyan">last</span>
+          Software
+          <br />
+          <span className="text-amber">that ships.</span>
         </motion.h1>
         <motion.p
-          className="mt-6 text-lg text-muted-foreground max-w-xl leading-relaxed"
-          initial={{ opacity: 0, y: 16 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5, delay: 0.2 }}
+          className="mt-8 text-base text-slate max-w-md leading-relaxed"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ duration: 0.6, delay: 0.3 }}
         >
-          A curated view of what we build — each project presented in full depth.
+          Each product below is presented in full — how it works, what it does,
+          and what it has achieved.
         </motion.p>
       </section>
 
-      {/* Product grid */}
-      <section className="relative z-10 px-8 pb-32 max-w-7xl mx-auto w-full">
+      {/* Product list */}
+      <section className="relative z-10 px-8 pb-32 max-w-5xl">
+        {/* Header row */}
+        <div className="flex items-center justify-between border-b border-border pb-3 mb-0">
+          <span className="font-mono text-xs text-slate uppercase tracking-widest">Product</span>
+          <span className="font-mono text-xs text-slate uppercase tracking-widest hidden sm:block">Details</span>
+        </div>
+
         {products.length > 0 ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {products.map((product, i) => (
-              <ProductCard key={product.id} product={product} index={i} />
-            ))}
-          </div>
+          products.map((product, i) => (
+            <ProductStrip key={product.id} product={product} index={i} />
+          ))
         ) : (
-          <div className="flex flex-col items-center justify-center py-32 gap-4">
-            <div className="w-12 h-12 rounded-full border border-cyan/20 flex items-center justify-center">
-              <div className="w-2 h-2 rounded-full bg-cyan/40 animate-pulse" />
-            </div>
-            <p className="font-mono text-xs text-muted-foreground tracking-wider">
-              No products published yet
-            </p>
+          <div className="py-24 flex flex-col gap-3">
+            <span className="font-mono text-xs text-slate">No products published yet.</span>
           </div>
         )}
       </section>

@@ -30,18 +30,18 @@ export default async function ProductPage({ params }: Props) {
 
   return (
     <main className="relative min-h-screen">
-      <div className="pointer-events-none fixed inset-0 grid-background opacity-60" />
+      <div className="pointer-events-none fixed inset-0 dot-grid" />
 
-      {/* Back nav */}
-      <nav className="relative z-10 px-8 py-6 border-b border-border flex items-center gap-4">
-        <Link href="/" className="font-display text-xl font-semibold tracking-tight text-white">
-          sfer<span className="text-cyan">.</span>
+      {/* Nav */}
+      <nav className="relative z-10 px-8 py-5 border-b border-border flex items-center gap-4">
+        <Link href="/" className="font-display text-lg font-bold tracking-tight text-foreground hover:text-amber transition-colors">
+          sfer<span className="text-amber">.</span>
         </Link>
-        <span className="text-border">·</span>
-        <span className="text-muted-foreground text-sm">{product.name}</span>
+        <span className="text-border font-mono">·</span>
+        <span className="font-mono text-xs text-slate uppercase tracking-wider">{product.name}</span>
       </nav>
 
-      {/* Render segments in order */}
+      {/* Segments */}
       <div className="relative z-10">
         {segments.map(segment => {
           switch (segment.type) {

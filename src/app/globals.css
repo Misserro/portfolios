@@ -32,8 +32,10 @@
   --color-primary: var(--primary);
   --color-card-foreground: var(--card-foreground);
   --color-card: var(--card);
-  --color-cyan: var(--cyan);
-  --color-green: var(--green);
+  --color-amber: var(--amber);
+  --color-slate: var(--slate);
+  --color-surface: var(--surface);
+  --color-elevated: var(--elevated);
   --radius-sm: calc(var(--radius) * 0.6);
   --radius-md: calc(var(--radius) * 0.8);
   --radius-lg: var(--radius);
@@ -41,32 +43,32 @@
 }
 
 :root {
-  /* Always dark — no light mode */
-  --background: #080B0F;
-  --foreground: #FFFFFF;
-  --card: rgba(13, 17, 23, 0.75);
-  --card-foreground: #FFFFFF;
-  --surface: #0D1117;
-  --elevated: #1A2332;
-  --primary: #00D4FF;
-  --primary-foreground: #080B0F;
-  --secondary: #1A2332;
-  --secondary-foreground: #FFFFFF;
-  --muted: #0D1117;
-  --muted-foreground: #8B9BAD;
-  --accent: #00FF9F;
-  --accent-foreground: #080B0F;
-  --destructive: oklch(0.704 0.191 22.216);
-  --border: rgba(255, 255, 255, 0.08);
-  --input: rgba(255, 255, 255, 0.06);
-  --ring: rgba(0, 212, 255, 0.4);
-  --cyan: #00D4FF;
-  --green: #00FF9F;
-  --radius: 0.75rem;
+  /* Precision Instrument palette — always dark */
+  --background:  #0E1016;
+  --foreground:  #E8EDF5;
+  --surface:     #1C2030;
+  --elevated:    #2A3040;
+  --card:        #1C2030;
+  --card-foreground: #E8EDF5;
+  --primary:     #D4A853;
+  --primary-foreground: #0E1016;
+  --secondary:   #1C2030;
+  --secondary-foreground: #E8EDF5;
+  --muted:       #1C2030;
+  --muted-foreground: #6B7A94;
+  --accent:      #D4A853;
+  --accent-foreground: #0E1016;
+  --destructive: oklch(0.65 0.22 25);
+  --border:      rgba(232, 237, 245, 0.08);
+  --input:       rgba(232, 237, 245, 0.06);
+  --ring:        rgba(212, 168, 83, 0.4);
+  --amber:       #D4A853;
+  --slate:       #6B7A94;
+  --radius:      0.5rem;
 
   --font-display: "Syne", sans-serif;
-  --font-body: "DM Sans", sans-serif;
-  --font-mono: "JetBrains Mono", monospace;
+  --font-body:    "DM Sans", sans-serif;
+  --font-mono:    "JetBrains Mono", monospace;
 }
 
 @layer base {
@@ -75,8 +77,9 @@
   }
 
   html {
-    background-color: #080B0F;
+    background-color: #0E1016;
     color-scheme: dark;
+    scroll-behavior: smooth;
   }
 
   body {
@@ -99,40 +102,39 @@
     font-family: var(--font-mono);
   }
 
-  .glass {
-    background: var(--card);
-    backdrop-filter: blur(16px);
-    -webkit-backdrop-filter: blur(16px);
+  /* Instrument surface — no blur, just depth */
+  .surface {
+    background: var(--surface);
     border: 1px solid var(--border);
   }
 
-  .glass-elevated {
-    background: rgba(26, 35, 50, 0.6);
-    backdrop-filter: blur(20px);
-    -webkit-backdrop-filter: blur(20px);
-    border: 1px solid rgba(0, 212, 255, 0.12);
+  .surface-elevated {
+    background: var(--elevated);
+    border: 1px solid rgba(212, 168, 83, 0.15);
   }
 
-  .glow-cyan {
-    box-shadow: 0 0 20px rgba(0, 212, 255, 0.15), 0 0 60px rgba(0, 212, 255, 0.05);
+  /* Amber glow — used sparingly */
+  .glow-amber {
+    box-shadow: 0 0 24px rgba(212, 168, 83, 0.12), 0 0 80px rgba(212, 168, 83, 0.04);
   }
 
-  .glow-green {
-    box-shadow: 0 0 20px rgba(0, 255, 159, 0.15), 0 0 60px rgba(0, 255, 159, 0.05);
+  .text-amber {
+    color: var(--amber);
   }
 
-  .text-cyan {
-    color: var(--cyan);
+  .text-slate {
+    color: var(--slate);
   }
 
-  .text-green {
-    color: var(--green);
+  /* Subtle dot grid — less prominent than before */
+  .dot-grid {
+    background-image: radial-gradient(rgba(232, 237, 245, 0.04) 1px, transparent 1px);
+    background-size: 28px 28px;
   }
 
-  .grid-background {
-    background-image:
-      linear-gradient(rgba(0, 212, 255, 0.03) 1px, transparent 1px),
-      linear-gradient(90deg, rgba(0, 212, 255, 0.03) 1px, transparent 1px);
-    background-size: 64px 64px;
+  /* Amber rule — the horizontal separator used throughout */
+  .rule-amber {
+    height: 1px;
+    background: linear-gradient(90deg, var(--amber), transparent);
   }
 }

@@ -16,11 +16,11 @@ export default function Header({ onAdminTrigger }: HeaderProps) {
   }, [onAdminTrigger])
 
   return (
-    <header className="relative z-10 flex items-center justify-between px-8 py-6 border-b border-border">
-      <span className="font-display text-xl font-semibold tracking-tight text-white">
-        sfer<span className="text-cyan">.</span>
+    <header className="relative z-10 flex items-center justify-between px-8 py-5 border-b border-border">
+      <span className="font-display text-lg font-bold tracking-tight text-foreground">
+        sfer<span className="text-amber">.</span>
       </span>
-      <span className="font-mono text-xs tracking-[0.2em] text-muted-foreground uppercase">
+      <span className="font-mono text-xs tracking-[0.2em] text-slate uppercase">
         portfolio
       </span>
     </header>
