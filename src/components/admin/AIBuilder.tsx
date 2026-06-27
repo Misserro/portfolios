@@ -131,11 +131,15 @@ export default function AIBuilder({ productId, sessionId, productName, onComplet
       fd.append("file", file)
       const res = await fetch("/api/upload", { method: "POST", body: fd })
       if (!res.ok) { toast.error((await res.json()).error ?? "Upload failed"); return }
-      const { anthropicFileId, name, type: contentType } = await res.json()
+      const { anthropicFileId, extractedText, name, type: contentType } = await res.json()
       if (anthropicFileId) {
         await sendMessage(
           `I've attached "${name}" for context.`,
           [{ file_id: anthropicFileId, content_type: contentType, name }]
+        )
+      } else if (extractedText) {
+        await sendMessage(
+          `Here is the content of "${name}":\n\n${extractedText}`
         )
       } else {
         toast.info(`${name} uploaded`)
