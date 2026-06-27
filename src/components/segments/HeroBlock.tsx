@@ -406,9 +406,11 @@ interface Props {
   features?: { title: string; description: string }[]
   steps?:    { title: string }[]
   stats?:    { label: string; value: string }[]
+  productName?: string
 }
 
-export default function HeroBlock({ content, features = [], steps = [], stats = [] }: Props) {
+export default function HeroBlock({ content, features = [], steps = [], stats = [], productName }: Props) {
+  const headline = content.headline || productName || ""
   return (
     <section className="w-full pt-20 pb-12">
       <div className="max-w-7xl mx-auto px-8 grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
@@ -426,12 +428,14 @@ export default function HeroBlock({ content, features = [], steps = [], stats = 
             </motion.div>
           )}
 
-          <motion.h1
-            className="font-display text-5xl sm:text-6xl font-extrabold tracking-tight text-foreground leading-[0.97]"
-            initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6, delay: 0.1 }}>
-            {content.headline}
-          </motion.h1>
+          {headline && (
+            <motion.h1
+              className="font-display text-5xl sm:text-6xl font-extrabold tracking-tight text-foreground leading-[0.97]"
+              initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.6, delay: 0.1 }}>
+              {headline}
+            </motion.h1>
+          )}
 
           {content.subheadline && (
             <motion.p className="mt-4 font-display text-2xl text-amber font-semibold"

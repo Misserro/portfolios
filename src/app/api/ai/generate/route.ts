@@ -49,6 +49,14 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Failed to parse Claude's response" }, { status: 422 })
   }
 
+  const hero = form?.segments?.hero
+  if (!hero?.headline || !hero?.description) {
+    return NextResponse.json(
+      { error: "Generated form is missing hero headline or description — please provide more product details and try again." },
+      { status: 422 }
+    )
+  }
+
   const assistantMessage: AIMessage = {
     role: "assistant",
     content: text,

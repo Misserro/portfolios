@@ -468,10 +468,10 @@ export default function AIBuilder({ productId, sessionId, productName, onComplet
               </button>
               <button
                 onClick={handleEnterPreview}
-                disabled={savingPreview}
+                disabled={savingPreview || generatingVisuals}
                 className="font-mono text-xs bg-amber text-background px-4 py-2 rounded-sm font-bold hover:bg-amber/90 transition-colors disabled:opacity-40"
               >
-                {savingPreview ? "Saving…" : "Looks good →"}
+                {savingPreview ? "Saving…" : generatingVisuals ? "Wait for visuals…" : "Looks good →"}
               </button>
             </>
           )}

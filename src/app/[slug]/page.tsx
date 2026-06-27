@@ -67,6 +67,7 @@ export default async function ProductPage({ params }: Props) {
                   features={features}
                   steps={steps}
                   stats={stats}
+                  productName={product.name}
                 />
               )
             case "preview":
