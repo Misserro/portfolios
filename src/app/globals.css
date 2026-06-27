@@ -1,12 +1,15 @@
 @import "tailwindcss";
 @import "tw-animate-css";
 @import "shadcn/tailwind.css";
-@import "@fontsource/syne/400.css";
-@import "@fontsource/syne/600.css";
-@import "@fontsource/syne/700.css";
-@import "@fontsource/syne/800.css";
-@import "@fontsource/dm-sans/400.css";
-@import "@fontsource/dm-sans/500.css";
+
+/* sfer.co font stack — exact match */
+@import "@fontsource/space-grotesk/400.css";
+@import "@fontsource/space-grotesk/500.css";
+@import "@fontsource/space-grotesk/600.css";
+@import "@fontsource/space-grotesk/700.css";
+@import "@fontsource/inter/400.css";
+@import "@fontsource/inter/500.css";
+@import "@fontsource/inter/600.css";
 @import "@fontsource/jetbrains-mono/400.css";
 @import "@fontsource/jetbrains-mono/500.css";
 
@@ -43,32 +46,47 @@
 }
 
 :root {
-  /* Precision Instrument palette — always dark */
-  --background:  #0E1016;
-  --foreground:  #E8EDF5;
-  --surface:     #1C2030;
-  --elevated:    #2A3040;
-  --card:        #1C2030;
-  --card-foreground: #E8EDF5;
-  --primary:     #D4A853;
-  --primary-foreground: #0E1016;
-  --secondary:   #1C2030;
-  --secondary-foreground: #E8EDF5;
-  --muted:       #1C2030;
-  --muted-foreground: #6B7A94;
-  --accent:      #D4A853;
-  --accent-foreground: #0E1016;
-  --destructive: oklch(0.65 0.22 25);
-  --border:      rgba(232, 237, 245, 0.08);
-  --input:       rgba(232, 237, 245, 0.06);
-  --ring:        rgba(212, 168, 83, 0.4);
-  --amber:       #D4A853;
-  --slate:       #6B7A94;
-  --radius:      0.5rem;
+  /* ── sfer.co exact color tokens ── */
+  --background:  #08090B;
+  --bg-2:        #0B0C10;
+  --foreground:  #F4F5F7;
+  --surface:     #111217;
+  --elevated:    #16181F;
+  --surface-3:   #1C1F28;
 
-  --font-display: "Syne", sans-serif;
-  --font-body:    "DM Sans", sans-serif;
-  --font-mono:    "JetBrains Mono", monospace;
+  --card:              #111217;
+  --card-foreground:   #F4F5F7;
+  --primary:           #F4A23A;
+  --primary-foreground:#08090B;
+  --secondary:         #111217;
+  --secondary-foreground: #F4F5F7;
+  --muted:             #111217;
+  --muted-foreground:  #8A8F98;
+  --accent:            #F2843C;
+  --accent-foreground: #08090B;
+  --destructive: oklch(0.65 0.22 25);
+  --border:      rgba(255, 255, 255, 0.08);
+  --border-2:    rgba(255, 255, 255, 0.14);
+  --input:       rgba(255, 255, 255, 0.06);
+  --ring:        rgba(242, 132, 60, 0.4);
+
+  /* brand */
+  --amber:  #F4A23A;
+  --orange: #F2843C;
+  --coral:  #F0726A;
+  --slate:  #8A8F98;
+  --faint:  #7A7F88;
+  --grad:   linear-gradient(105deg, #F4A23A 0%, #F2843C 48%, #F0726A 100%);
+  --glow:   color-mix(in oklch, #F2843C 42%, transparent);
+  --glow-soft: color-mix(in oklch, #F2843C 16%, transparent);
+
+  /* fonts — sfer.co stack */
+  --font-display: "Space Grotesk", -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+  --font-body:    "Inter", -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+  --font-mono:    "JetBrains Mono", ui-monospace, "SF Mono", Menlo, monospace;
+
+  --radius: 0.5rem;
+  --ease:   cubic-bezier(.22, 1, .36, 1);
 }
 
 @layer base {
@@ -77,7 +95,7 @@
   }
 
   html {
-    background-color: #0E1016;
+    background-color: #08090B;
     color-scheme: dark;
     scroll-behavior: smooth;
   }
@@ -102,7 +120,6 @@
     font-family: var(--font-mono);
   }
 
-  /* Instrument surface — no blur, just depth */
   .surface {
     background: var(--surface);
     border: 1px solid var(--border);
@@ -110,12 +127,12 @@
 
   .surface-elevated {
     background: var(--elevated);
-    border: 1px solid rgba(212, 168, 83, 0.15);
+    border: 1px solid var(--border-2);
   }
 
-  /* Amber glow — used sparingly */
+  /* sfer.co brand gradient glow */
   .glow-amber {
-    box-shadow: 0 0 24px rgba(212, 168, 83, 0.12), 0 0 80px rgba(212, 168, 83, 0.04);
+    box-shadow: 0 0 24px var(--glow-soft), 0 0 80px color-mix(in oklch, var(--orange) 8%, transparent);
   }
 
   .text-amber {
@@ -126,27 +143,28 @@
     color: var(--slate);
   }
 
-  /* Subtle dot grid — less prominent than before */
+  /* Dot grid — slightly adjusted for darker bg */
   .dot-grid {
-    background-image: radial-gradient(rgba(232, 237, 245, 0.04) 1px, transparent 1px);
+    background-image: radial-gradient(rgba(244, 245, 247, 0.035) 1px, transparent 1px);
     background-size: 28px 28px;
   }
 
-  /* Amber rule — the horizontal separator used throughout */
+  /* sfer.co eyebrow rule — gradient line before label */
   .rule-amber {
     height: 1px;
-    background: linear-gradient(90deg, var(--amber), transparent);
+    background: var(--grad);
+    box-shadow: 0 0 9px var(--glow);
   }
 
-  /* Gradient text — champagne sweep across amber */
+  /* sfer.co 3-stop brand gradient text */
   .grad-text {
-    background: linear-gradient(90deg, #D4A853 0%, #F0D080 45%, #D4A853 100%);
+    background: var(--grad);
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
     background-clip: text;
   }
 
-  /* Hero ambient bloom — pulses slowly */
+  /* Hero ambient bloom — orange glow */
   .hero-bloom {
     position: absolute;
     top: 40%;
@@ -154,7 +172,7 @@
     transform: translate(-50%, -50%);
     width: 900px;
     height: 640px;
-    background: radial-gradient(ellipse at center, rgba(212,168,83,0.07) 0%, rgba(212,168,83,0.02) 45%, transparent 70%);
+    background: radial-gradient(ellipse at center, color-mix(in oklch, #F2843C 9%, transparent) 0%, transparent 68%);
     pointer-events: none;
     animation: bloom 7s ease-in-out infinite alternate;
   }
@@ -168,13 +186,13 @@
     .hero-bloom { animation: none; }
   }
 
-  /* Product viz — abstract SVG graphic on each product entry */
+  /* Product viz — fades up on hover */
   .product-viz {
-    opacity: 0.45;
+    opacity: 0.4;
     transition: opacity 0.35s ease;
   }
 
   .product-entry:hover .product-viz {
-    opacity: 0.85;
+    opacity: 0.9;
   }
 }

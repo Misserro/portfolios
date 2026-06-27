@@ -11,9 +11,10 @@ interface Particle {
   opacity: number
 }
 
-const AMBER_R = 212
-const AMBER_G = 168
-const AMBER_B = 83
+// sfer.co orange — #F2843C
+const AMBER_R = 242
+const AMBER_G = 132
+const AMBER_B = 60
 const CONNECTION_DIST = 130
 const SPEED = 0.28
 

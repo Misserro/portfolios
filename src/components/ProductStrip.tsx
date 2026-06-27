@@ -36,34 +36,34 @@ function ProductViz({ index }: { index: number }) {
   if (type === 0) return (
     // Waveform / signal trace
     <svg viewBox="0 0 220 120" fill="none" className="product-viz w-full h-full">
-      <line x1="0" y1="40" x2="220" y2="40" stroke="#D4A853" strokeWidth="0.4" opacity="0.3"/>
-      <line x1="0" y1="80" x2="220" y2="80" stroke="#D4A853" strokeWidth="0.4" opacity="0.3"/>
-      <line x1="55" y1="4" x2="55" y2="116" stroke="#D4A853" strokeWidth="0.4" opacity="0.2"/>
-      <line x1="110" y1="4" x2="110" y2="116" stroke="#D4A853" strokeWidth="0.4" opacity="0.2"/>
-      <line x1="165" y1="4" x2="165" y2="116" stroke="#D4A853" strokeWidth="0.4" opacity="0.2"/>
+      <line x1="0" y1="40" x2="220" y2="40" stroke="#F2843C" strokeWidth="0.4" opacity="0.3"/>
+      <line x1="0" y1="80" x2="220" y2="80" stroke="#F2843C" strokeWidth="0.4" opacity="0.3"/>
+      <line x1="55" y1="4" x2="55" y2="116" stroke="#F2843C" strokeWidth="0.4" opacity="0.2"/>
+      <line x1="110" y1="4" x2="110" y2="116" stroke="#F2843C" strokeWidth="0.4" opacity="0.2"/>
+      <line x1="165" y1="4" x2="165" y2="116" stroke="#F2843C" strokeWidth="0.4" opacity="0.2"/>
       <polyline
         points="0,88 20,52 40,94 60,28 80,72 100,16 120,58 140,38 160,74 180,30 200,50 220,62"
-        stroke="#D4A853" strokeWidth="1.5" opacity="0.9"
+        stroke="#F2843C" strokeWidth="1.5" opacity="0.9"
       />
-      <circle cx="100" cy="16" r="3.5" fill="#D4A853" opacity="1"/>
-      <circle cx="60" cy="28" r="2" fill="#D4A853" opacity="0.6"/>
-      <circle cx="180" cy="30" r="2" fill="#D4A853" opacity="0.6"/>
+      <circle cx="100" cy="16" r="3.5" fill="#F2843C" opacity="1"/>
+      <circle cx="60" cy="28" r="2" fill="#F2843C" opacity="0.6"/>
+      <circle cx="180" cy="30" r="2" fill="#F2843C" opacity="0.6"/>
     </svg>
   )
 
   if (type === 1) return (
     // Architecture diagram — right-angle system blocks
     <svg viewBox="0 0 220 120" fill="none" className="product-viz w-full h-full">
-      <rect x="88" y="46" width="44" height="28" stroke="#D4A853" strokeWidth="1" opacity="0.9"/>
-      <rect x="16" y="16" width="34" height="20" stroke="#D4A853" strokeWidth="0.7" opacity="0.5"/>
-      <rect x="16" y="84" width="34" height="20" stroke="#D4A853" strokeWidth="0.7" opacity="0.5"/>
-      <rect x="170" y="16" width="34" height="20" stroke="#D4A853" strokeWidth="0.7" opacity="0.5"/>
-      <rect x="170" y="84" width="34" height="20" stroke="#D4A853" strokeWidth="0.7" opacity="0.5"/>
-      <line x1="50" y1="26" x2="88" y2="53" stroke="#D4A853" strokeWidth="0.6" opacity="0.35"/>
-      <line x1="50" y1="94" x2="88" y2="67" stroke="#D4A853" strokeWidth="0.6" opacity="0.35"/>
-      <line x1="132" y1="53" x2="170" y2="26" stroke="#D4A853" strokeWidth="0.6" opacity="0.35"/>
-      <line x1="132" y1="67" x2="170" y2="94" stroke="#D4A853" strokeWidth="0.6" opacity="0.35"/>
-      <circle cx="110" cy="60" r="3" fill="#D4A853" opacity="0.8"/>
+      <rect x="88" y="46" width="44" height="28" stroke="#F2843C" strokeWidth="1" opacity="0.9"/>
+      <rect x="16" y="16" width="34" height="20" stroke="#F2843C" strokeWidth="0.7" opacity="0.5"/>
+      <rect x="16" y="84" width="34" height="20" stroke="#F2843C" strokeWidth="0.7" opacity="0.5"/>
+      <rect x="170" y="16" width="34" height="20" stroke="#F2843C" strokeWidth="0.7" opacity="0.5"/>
+      <rect x="170" y="84" width="34" height="20" stroke="#F2843C" strokeWidth="0.7" opacity="0.5"/>
+      <line x1="50" y1="26" x2="88" y2="53" stroke="#F2843C" strokeWidth="0.6" opacity="0.35"/>
+      <line x1="50" y1="94" x2="88" y2="67" stroke="#F2843C" strokeWidth="0.6" opacity="0.35"/>
+      <line x1="132" y1="53" x2="170" y2="26" stroke="#F2843C" strokeWidth="0.6" opacity="0.35"/>
+      <line x1="132" y1="67" x2="170" y2="94" stroke="#F2843C" strokeWidth="0.6" opacity="0.35"/>
+      <circle cx="110" cy="60" r="3" fill="#F2843C" opacity="0.8"/>
     </svg>
   )
 
@@ -75,23 +75,23 @@ function ProductViz({ index }: { index: number }) {
         [52, 88, 2], [104, 48, 5.5], [178, 32, 2.5], [192, 88, 1.8],
         [22, 58, 1.8], [152, 98, 1.8], [72, 12, 2], [138, 78, 1.8],
       ] as [number, number, number][]).map(([x, y, r], i) => (
-        <circle key={i} cx={x} cy={y} r={r} fill="#D4A853" opacity={0.25 + r * 0.08}/>
+        <circle key={i} cx={x} cy={y} r={r} fill="#F2843C" opacity={0.25 + r * 0.08}/>
       ))}
-      <line x1="38" y1="28" x2="78" y2="62" stroke="#D4A853" strokeWidth="0.5" opacity="0.22"/>
-      <line x1="78" y1="62" x2="104" y2="48" stroke="#D4A853" strokeWidth="0.5" opacity="0.22"/>
-      <line x1="104" y1="48" x2="128" y2="22" stroke="#D4A853" strokeWidth="0.5" opacity="0.22"/>
-      <line x1="128" y1="22" x2="162" y2="68" stroke="#D4A853" strokeWidth="0.5" opacity="0.22"/>
-      <line x1="78" y1="62" x2="52" y2="88" stroke="#D4A853" strokeWidth="0.5" opacity="0.22"/>
-      <line x1="104" y1="48" x2="162" y2="68" stroke="#D4A853" strokeWidth="0.5" opacity="0.22"/>
-      <circle cx="104" cy="48" r="11" stroke="#D4A853" strokeWidth="0.5" opacity="0.12"/>
-      <circle cx="104" cy="48" r="18" stroke="#D4A853" strokeWidth="0.3" opacity="0.07"/>
+      <line x1="38" y1="28" x2="78" y2="62" stroke="#F2843C" strokeWidth="0.5" opacity="0.22"/>
+      <line x1="78" y1="62" x2="104" y2="48" stroke="#F2843C" strokeWidth="0.5" opacity="0.22"/>
+      <line x1="104" y1="48" x2="128" y2="22" stroke="#F2843C" strokeWidth="0.5" opacity="0.22"/>
+      <line x1="128" y1="22" x2="162" y2="68" stroke="#F2843C" strokeWidth="0.5" opacity="0.22"/>
+      <line x1="78" y1="62" x2="52" y2="88" stroke="#F2843C" strokeWidth="0.5" opacity="0.22"/>
+      <line x1="104" y1="48" x2="162" y2="68" stroke="#F2843C" strokeWidth="0.5" opacity="0.22"/>
+      <circle cx="104" cy="48" r="11" stroke="#F2843C" strokeWidth="0.5" opacity="0.12"/>
+      <circle cx="104" cy="48" r="18" stroke="#F2843C" strokeWidth="0.3" opacity="0.07"/>
     </svg>
   )
 
   // type === 3: Vertical bar chart / metrics
   return (
     <svg viewBox="0 0 220 120" fill="none" className="product-viz w-full h-full">
-      <line x1="18" y1="102" x2="202" y2="102" stroke="#D4A853" strokeWidth="0.5" opacity="0.3"/>
+      <line x1="18" y1="102" x2="202" y2="102" stroke="#F2843C" strokeWidth="0.5" opacity="0.3"/>
       {[42, 64, 38, 78, 55, 88, 48, 70, 60, 92].map((h, i) => (
         <rect
           key={i}
@@ -100,11 +100,11 @@ function ProductViz({ index }: { index: number }) {
           width="13"
           height={h * 0.86}
           rx="1"
-          fill="#D4A853"
+          fill="#F2843C"
           opacity={i === 5 ? 0.75 : 0.12 + (h / 100) * 0.28}
         />
       ))}
-      <line x1="18" y1="78" x2="202" y2="78" stroke="#D4A853" strokeWidth="0.4" strokeDasharray="3 4" opacity="0.2"/>
+      <line x1="18" y1="78" x2="202" y2="78" stroke="#F2843C" strokeWidth="0.4" strokeDasharray="3 4" opacity="0.2"/>
     </svg>
   )
 }
