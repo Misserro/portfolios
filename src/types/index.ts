@@ -38,6 +38,7 @@ export interface HeroContent {
   subheadline: string
   description: string
   tags: string[]
+  viz_svg?: string   // Claude-generated animated SVG, stored after build
 }
 
 export interface PreviewContent {
@@ -51,6 +52,7 @@ export interface FeaturesContent {
     title: string
     description: string
     icon?: string
+    icon_svg?: string  // Claude-generated SVG inner content, stored after build
   }[]
 }
 

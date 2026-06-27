@@ -8,8 +8,8 @@ import type { AIMessage, AIFileAttachment } from "@/types"
 type Phase = "clarifying" | "form_review" | "preview"
 
 interface SegmentMap {
-  hero?: { headline: string; subheadline?: string; description: string; tags: string[] }
-  features?: { features: { title: string; description: string }[] }
+  hero?: { headline: string; subheadline?: string; description: string; tags: string[]; viz_svg?: string }
+  features?: { features: { title: string; description: string; icon_svg?: string }[] }
   how_it_works?: { steps: { title: string; description: string }[] }
   stats?: { stats: { label: string; value: string; note?: string }[] }
   cta?: { headline: string; description: string; button_label: string; button_url: string }
@@ -41,7 +41,8 @@ export default function AIBuilder({ productId, sessionId, productName, onComplet
   const [streaming, setStreaming]       = useState(false)
   const [streamText, setStreamText]     = useState("")
   const [form, setForm]                 = useState<Form | null>(null)
-  const [generating, setGenerating]     = useState(false)
+  const [generating, setGenerating]         = useState(false)
+  const [generatingVisuals, setGeneratingVisuals] = useState(false)
   const [publishing, setPublishing]     = useState(false)
   const [uploadingFile, setUploadingFile] = useState(false)
   const [revealedFields, setRevealedFields] = useState<Set<string>>(new Set())
@@ -166,6 +167,46 @@ export default function AIBuilder({ productId, sessionId, productName, onComplet
     finally { setScrapingUrl(false) }
   }
 
+  async function generateVisuals(f: Form) {
+    const hero     = f.segments.hero
+    const features = f.segments.features?.features ?? []
+    if (!hero || features.length === 0) return
+    setGeneratingVisuals(true)
+    try {
+      const res = await fetch("/api/ai/generate-visuals", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          headline:    hero.headline,
+          tags:        hero.tags ?? [],
+          description: hero.description ?? "",
+          features,
+          steps: f.segments.how_it_works?.steps ?? [],
+          stats: f.segments.stats?.stats ?? [],
+        }),
+      })
+      if (!res.ok) return
+      const { iconSvgs, heroVizSvg } = await res.json()
+      setForm(prev => {
+        if (!prev) return prev
+        const next = JSON.parse(JSON.stringify(prev)) as Form
+        if (next.segments.features && iconSvgs?.length) {
+          next.segments.features.features = next.segments.features.features.map(
+            (feat, i) => ({ ...feat, icon_svg: iconSvgs[i] ?? feat.icon_svg })
+          )
+        }
+        if (next.segments.hero && heroVizSvg) {
+          next.segments.hero.viz_svg = heroVizSvg
+        }
+        return next
+      })
+    } catch {
+      // Non-fatal — fallback rendering handles the missing visuals
+    } finally {
+      setGeneratingVisuals(false)
+    }
+  }
+
   async function handleGenerateForm() {
     setGenerating(true)
     try {
@@ -183,10 +224,10 @@ export default function AIBuilder({ productId, sessionId, productName, onComplet
         "features", "how_it_works", "stats", "cta",
       ]
       allFields.forEach((field, i) => {
-        setTimeout(() => {
-          setRevealedFields(prev => new Set([...prev, field]))
-        }, 200 + i * 120)
+        setTimeout(() => setRevealedFields(prev => new Set([...prev, field])), 200 + i * 120)
       })
+      // Fire visual generation in the background — updates form state when ready
+      generateVisuals(generatedForm)
     } catch { toast.error("Generation failed") }
     finally { setGenerating(false) }
   }
@@ -413,6 +454,12 @@ export default function AIBuilder({ productId, sessionId, productName, onComplet
           )}
           {phase === "form_review" && (
             <>
+              {generatingVisuals && (
+                <span className="font-mono text-xs text-slate/50 flex items-center gap-2">
+                  <span className="w-1.5 h-1.5 rounded-full bg-amber/60 animate-pulse" />
+                  generating visuals…
+                </span>
+              )}
               <button
                 onClick={() => setPhase("clarifying")}
                 className="font-mono text-xs text-slate hover:text-foreground transition-colors px-3 py-2"
