@@ -2,7 +2,7 @@
 
 import { motion, useInView } from "framer-motion"
 import { useRef } from "react"
-import { ComposableMap, Geographies, Geography, Marker, ZoomableGroup } from "react-simple-maps"
+import { ComposableMap, Geographies, Geography, ZoomableGroup } from "react-simple-maps"
 import type { MapContent } from "@/types"
 
 // ISO alpha-2 → ISO numeric (Natural Earth ids used by world-atlas)
@@ -99,38 +99,6 @@ export default function MapBlock({ content }: { content: MapContent }) {
                 }
               </Geographies>
 
-              {content.cities.map((city, i) => (
-                <Marker key={i} coordinates={city.coordinates}>
-                  <motion.circle
-                    r={3.5}
-                    fill="#F2843C"
-                    fillOpacity={0.9}
-                    initial={{ opacity: 0, scale: 0 }}
-                    animate={inView ? { opacity: 1, scale: 1 } : {}}
-                    transition={{ delay: 0.4 + i * 0.06, duration: 0.3 }}
-                  />
-                  <motion.circle
-                    r={7}
-                    fill="none"
-                    stroke="#F2843C"
-                    strokeWidth={0.6}
-                    strokeOpacity={0.25}
-                    initial={{ opacity: 0 }}
-                    animate={inView ? { opacity: 1 } : {}}
-                    transition={{ delay: 0.5 + i * 0.06 }}
-                  />
-                  <motion.text
-                    y={-10}
-                    textAnchor="middle"
-                    style={{ fontFamily: "monospace", fontSize: 3.5, fill: "#F2843C", fillOpacity: 0.6 }}
-                    initial={{ opacity: 0 }}
-                    animate={inView ? { opacity: 1 } : {}}
-                    transition={{ delay: 0.6 + i * 0.06 }}
-                  >
-                    {city.name}
-                  </motion.text>
-                </Marker>
-              ))}
             </ZoomableGroup>
           </ComposableMap>
         </motion.div>

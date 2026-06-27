@@ -3,78 +3,103 @@ export interface FlowStep {
   description?: string
 }
 
-// Truncate to fit inside a node label — split into max 2 lines of maxChars each
-function splitLabel(title: string, maxChars = 9): [string, string?] {
-  const words = title.split(/\s+/)
-  if (words.join(" ").length <= maxChars) return [words.join(" ")]
-
-  let line1 = ""
-  let line2 = ""
-  for (const w of words) {
-    if ((line1 + (line1 ? " " : "") + w).length <= maxChars) {
-      line1 += (line1 ? " " : "") + w
-    } else {
-      line2 += (line2 ? " " : "") + w
-    }
-  }
-  if (line2.length > maxChars) line2 = line2.slice(0, maxChars - 1) + "…"
-  return [line1, line2 || undefined]
-}
-
 export function renderFlow(steps: FlowStep[]): string {
-  const W = 480
-  const H = 200
   const count = steps.length
   if (count === 0) return ""
 
-  // Node geometry
-  const R = 18                  // circle radius
-  const MARGIN_X = 40
-  const NODE_Y = 90             // center y of nodes
+  const W = 480
+  const H = 120
+  const MARGIN = 52
+  const cy = 60
+  const LOOP = 3.5
 
-  const xs: number[] = count === 1
-    ? [W / 2]
-    : steps.map((_, i) => MARGIN_X + (i * (W - 2 * MARGIN_X)) / (count - 1))
+  // Chip-style node dimensions
+  const NW = 38
+  const NH = 24
+  const NRX = 4
 
-  // Path through all node centers (for animateMotion)
-  const pathD = xs.map((x, i) => `${i === 0 ? "M" : "L"} ${x} ${NODE_Y}`).join(" ")
+  const xs = steps.map((_, i) =>
+    count === 1 ? W / 2 : MARGIN + (i * (W - 2 * MARGIN)) / (count - 1)
+  )
 
-  // Duration: 0.9s per segment, 0.4s pause at each node
-  const totalDur = (count - 1) * 0.9 + count * 0.4
+  // Zigzag: even nodes top, odd nodes bottom — creates a non-linear, dynamic layout
+  const ys = count === 1
+    ? [cy]
+    : steps.map((_, i) => (i % 2 === 0 ? cy - 19 : cy + 19))
 
-  const lines = xs.slice(0, -1).map((x, i) => {
-    const nx = xs[i + 1]
-    const x1 = x + R + 3
-    const x2 = nx - R - 3
-    // Arrowhead at x2
+  // Dot animateMotion path: smooth cubic bezier through every node center
+  const dotPathParts = [`M ${xs[0].toFixed(1)} ${ys[0]}`]
+  for (let i = 0; i < count - 1; i++) {
+    const x0 = xs[i], y0 = ys[i]
+    const x1 = xs[i + 1], y1 = ys[i + 1]
+    const arm = Math.max((x1 - x0) * 0.42, 14)
+    dotPathParts.push(
+      `C ${(x0 + arm).toFixed(1)} ${y0} ${(x1 - arm).toFixed(1)} ${y1} ${x1.toFixed(1)} ${y1}`
+    )
+  }
+  const dotPath = dotPathParts.join(" ")
+
+  // Edge-to-edge bezier connections with marching dashes
+  const DASH_PERIOD = 9
+  const connections = xs.slice(0, -1).map((x, i) => {
+    const x0 = x, y0 = ys[i]
+    const x1 = xs[i + 1], y1 = ys[i + 1]
+    const ex0 = x0 + NW / 2 + 2
+    const ex1 = x1 - NW / 2 - 2
+    const arm = Math.max((ex1 - ex0) * 0.42, 10)
+    const d = `M ${ex0.toFixed(1)} ${y0} C ${(ex0 + arm).toFixed(1)} ${y0} ${(ex1 - arm).toFixed(1)} ${y1} ${ex1.toFixed(1)} ${y1}`
     return `
-  <line x1="${x1}" y1="${NODE_Y}" x2="${x2 - 6}" y2="${NODE_Y}" stroke="#F2843C" stroke-width="0.7" opacity="0.25"/>
-  <path d="M${x2 - 8} ${NODE_Y - 4} L${x2} ${NODE_Y} L${x2 - 8} ${NODE_Y + 4}" stroke="#F2843C" stroke-width="0.8" fill="none" opacity="0.4"/>`
+  <path d="${d}" stroke="#F2843C" stroke-width="0.5" fill="none" stroke-opacity="0.13"/>
+  <path d="${d}" stroke="#F2843C" stroke-width="0.9" fill="none" stroke-dasharray="3 6" stroke-opacity="0.4">
+    <animate attributeName="stroke-dashoffset" from="${DASH_PERIOD}" to="0" dur="${LOOP}s" repeatCount="indefinite"/>
+  </path>`
   }).join("")
 
+  // Chip nodes: glow halo + animated border + fill flash on arrival
   const nodes = xs.map((x, i) => {
-    const [line1, line2] = splitLabel(steps[i].title.toUpperCase())
-    const labelY1 = line2 ? NODE_Y + R + 14 : NODE_Y + R + 16
-    const labelY2 = NODE_Y + R + 26
-    const numY = NODE_Y - R - 7
-
+    const y = ys[i]
+    const pulseBegin = count > 1 ? ((i / (count - 1)) * LOOP).toFixed(2) : "0"
+    const rx = (x - NW / 2).toFixed(1)
+    const ry = (y - NH / 2).toFixed(1)
+    const gx = (x - NW / 2 - 5).toFixed(1)
+    const gy = (y - NH / 2 - 5).toFixed(1)
     return `
-  <circle cx="${x}" cy="${NODE_Y}" r="${R}" stroke="#F2843C" stroke-width="0.9" fill="#F2843C" fill-opacity="0.05"/>
-  <text x="${x}" y="${numY}" text-anchor="middle" font-size="7" fill="#F2843C" fill-opacity="0.35" font-family="monospace">${String(i + 1).padStart(2, "0")}</text>
-  <text x="${x}" y="${labelY1}" text-anchor="middle" font-size="8" fill="#F2843C" fill-opacity="0.75" font-family="monospace">${line1}</text>${line2 ? `
-  <text x="${x}" y="${labelY2}" text-anchor="middle" font-size="8" fill="#F2843C" fill-opacity="0.75" font-family="monospace">${line2}</text>` : ""}`
+  <rect x="${gx}" y="${gy}" width="${NW + 10}" height="${NH + 10}" rx="${NRX + 4}" fill="#F2843C" fill-opacity="0">
+    <animate attributeName="fill-opacity" values="0;0.09;0" keyTimes="0;0.12;0.5"
+      dur="${LOOP}s" begin="${pulseBegin}s" repeatCount="indefinite"/>
+  </rect>
+  <rect x="${rx}" y="${ry}" width="${NW}" height="${NH}" rx="${NRX}"
+    stroke="#F2843C" fill="#F2843C" fill-opacity="0.06">
+    <animate attributeName="stroke-opacity" values="0.35;1;0.35" keyTimes="0;0.1;0.4"
+      dur="${LOOP}s" begin="${pulseBegin}s" repeatCount="indefinite"/>
+    <animate attributeName="stroke-width" values="0.8;1.4;0.8" keyTimes="0;0.1;0.4"
+      dur="${LOOP}s" begin="${pulseBegin}s" repeatCount="indefinite"/>
+    <animate attributeName="fill-opacity" values="0.06;0.18;0.06" keyTimes="0;0.1;0.4"
+      dur="${LOOP}s" begin="${pulseBegin}s" repeatCount="indefinite"/>
+  </rect>
+  <text x="${x.toFixed(1)}" y="${(y + 3).toFixed(1)}" text-anchor="middle"
+    font-size="8" fill="#F2843C" fill-opacity="0.45" font-family="monospace">${String(i + 1).padStart(2, "0")}</text>`
   }).join("")
 
-  return `<svg viewBox="0 0 480 200" fill="none" xmlns="http://www.w3.org/2000/svg">
-  <defs>
-    <path id="fp" d="${pathD}"/>
-  </defs>
-  ${lines}
-  ${nodes}
-  <circle r="4.5" fill="#F2843C" fill-opacity="0.95">
-    <animateMotion dur="${totalDur.toFixed(1)}s" repeatCount="indefinite" rotate="auto">
-      <mpath href="#fp"/>
-    </animateMotion>
+  // Signal dot: soft halo + bright core + trailing ghost
+  const dot = `
+  <circle r="7" fill="#F2843C" fill-opacity="0">
+    <animateMotion dur="${LOOP}s" repeatCount="indefinite"><mpath href="#fp"/></animateMotion>
+    <animate attributeName="fill-opacity" values="0;0.07;0.07;0" keyTimes="0;0.04;0.88;1" dur="${LOOP}s" repeatCount="indefinite"/>
   </circle>
+  <circle r="3.5" fill="#F2843C">
+    <animateMotion dur="${LOOP}s" repeatCount="indefinite"><mpath href="#fp"/></animateMotion>
+    <animate attributeName="fill-opacity" values="0;1;1;0" keyTimes="0;0.04;0.88;1" dur="${LOOP}s" repeatCount="indefinite"/>
+  </circle>
+  <circle r="2" fill="#F2843C">
+    <animateMotion dur="${LOOP}s" repeatCount="indefinite" begin="-0.15s"><mpath href="#fp"/></animateMotion>
+    <animate attributeName="fill-opacity" values="0;0.4;0.4;0" keyTimes="0;0.04;0.88;1" dur="${LOOP}s" repeatCount="indefinite" begin="-0.15s"/>
+  </circle>`
+
+  return `<svg viewBox="0 0 ${W} ${H}" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs><path id="fp" d="${dotPath}"/></defs>
+  ${connections}
+  ${nodes}
+  ${dot}
 </svg>`
 }

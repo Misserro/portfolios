@@ -103,8 +103,7 @@ CONVERSATION:
 ${conversationContext || "(not available)"}
 
 Instructions:
-- Identify which countries or regions this product currently operates in (not planned future expansion)
-- List major cities/locations mentioned (with accurate real-world coordinates)
+- Identify which countries this product currently operates in (not planned future expansion)
 - Choose a map center and scale that frames the coverage area well
 
 Scale guide:
@@ -117,19 +116,17 @@ Scale guide:
 Return this JSON shape:
 {
   "label": "Coverage Area",
-  "countries": ["PL"],
-  "cities": [
-    { "name": "Katowice", "coordinates": [19.027, 50.257] },
-    { "name": "Gliwice", "coordinates": [18.670, 50.292] }
-  ],
+  "countries": ["PL", "DE"],
+  "cities": [],
   "center": [19.5, 50.8],
-  "scale": 3000
+  "scale": 1200
 }
 
 Rules:
 - countries: ISO alpha-2 codes only
-- coordinates: [longitude, latitude] — must be accurate real-world values
-- Only include cities explicitly mentioned in the conversation
+- cities: always an empty array []
+- center: [longitude, latitude] of the map viewport center
+- scale: higher = more zoomed in
 - If product has no geographic scope, return { "countries": [], "cities": [], "center": [0, 20], "scale": 150 }`
 }
 
