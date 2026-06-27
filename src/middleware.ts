@@ -1,20 +1,15 @@
 import { NextRequest, NextResponse } from "next/server"
 
-export async function middleware(request: NextRequest) {
+export function middleware(request: NextRequest) {
   if (request.nextUrl.pathname.startsWith("/admin")) {
-    // Use a fetch to the BetterAuth session endpoint rather than importing `auth`
-    // directly — the `pg` driver uses Node.js native modules that crash the Edge runtime.
-    try {
-      const sessionUrl = new URL("/api/auth/get-session", request.url)
-      const res = await fetch(sessionUrl, { headers: request.headers })
-      if (res.ok) {
-        const data = await res.json()
-        if (data?.user) return NextResponse.next()
-      }
-    } catch {
-      // fall through to redirect
+    // Checking for the session cookie is Edge-safe.
+    // The pg driver can't run here (node:util/types missing in Edge),
+    // so we can't call auth.api.getSession(). The actual session is
+    // validated server-side in each admin page and API route.
+    const session = request.cookies.get("better-auth.session_token")
+    if (!session?.value) {
+      return NextResponse.redirect(new URL("/", request.url))
     }
-    return NextResponse.redirect(new URL("/", request.url))
   }
   return NextResponse.next()
 }

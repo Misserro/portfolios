@@ -22,7 +22,11 @@ export default function AdminLoginModal({ open, onClose }: Props) {
     setError("")
     setLoading(true)
     try {
-      await signIn.email({ email, password })
+      const { error: authError } = await signIn.email({ email, password })
+      if (authError) {
+        setError(authError.message ?? "Credentials not recognised.")
+        return
+      }
       onClose()
       router.push("/admin")
     } catch {
