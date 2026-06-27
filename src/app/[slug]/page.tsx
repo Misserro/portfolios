@@ -8,6 +8,7 @@ import HowItWorksBlock from "@/components/segments/HowItWorksBlock"
 import StatsBlock from "@/components/segments/StatsBlock"
 import TestimonialsBlock from "@/components/segments/TestimonialsBlock"
 import CTABlock from "@/components/segments/CTABlock"
+import HeroCanvas from "@/components/HeroCanvas"
 import Link from "next/link"
 
 interface Props {
@@ -29,9 +30,13 @@ export default async function ProductPage({ params }: Props) {
     [product.id]
   )
 
+  // Deterministic seed for per-product viz style
+  const vizSeed = slug.split("").reduce((acc, c) => acc + c.charCodeAt(0), 0)
+
   return (
-    <main className="relative min-h-screen">
-      <div className="pointer-events-none fixed inset-0 dot-grid" />
+    <main className="relative min-h-screen bg-background overflow-x-hidden">
+      <HeroCanvas />
+      <div className="hero-bloom pointer-events-none" />
 
       {/* Nav */}
       <nav className="relative z-10 px-8 py-5 border-b border-border flex items-center gap-4">
@@ -47,7 +52,7 @@ export default async function ProductPage({ params }: Props) {
         {segments.map(segment => {
           switch (segment.type) {
             case "hero":
-              return <HeroBlock key={segment.id} content={segment.content as HeroContent} />
+              return <HeroBlock key={segment.id} content={segment.content as HeroContent} vizSeed={vizSeed} />
             case "preview":
               return <PreviewBlock key={segment.id} content={segment.content as PreviewContent} />
             case "features":
@@ -56,6 +61,8 @@ export default async function ProductPage({ params }: Props) {
               return <HowItWorksBlock key={segment.id} content={segment.content as HowItWorksContent} />
             case "stats":
               return <StatsBlock key={segment.id} content={segment.content as StatsContent} />
+            case "testimonials":
+              return <TestimonialsBlock key={segment.id} content={segment.content as TestimonialsContent} />
             case "cta":
               return <CTABlock key={segment.id} content={segment.content as CTAContent} />
             default:

@@ -12,7 +12,6 @@ function StatItem({ stat, index }: { stat: { label: string; value: string; note?
 
   useEffect(() => {
     if (isInView) {
-      // Slight delay per item, then animate bar to ~70-90% (represents "strong but not full")
       setTimeout(() => {
         animate(barWidth, 72 + (index % 3) * 8, { duration: 1.2, ease: "easeOut" })
       }, index * 120)
@@ -36,14 +35,8 @@ function StatItem({ stat, index }: { stat: { label: string; value: string; note?
       {stat.note && (
         <span className="font-mono text-xs text-slate">{stat.note}</span>
       )}
-      {/* Gauge bar — the signature element */}
       <div className="h-px bg-border w-full mt-1">
-        <motion.div
-          className="h-px bg-amber origin-left"
-          style={{ width: springWidth.get() + "%" }}
-        >
-          <motion.div className="h-px bg-amber" style={{ scaleX: springWidth, transformOrigin: "left" }} />
-        </motion.div>
+        <motion.div className="h-px bg-amber origin-left" style={{ scaleX: springWidth, transformOrigin: "left" }} />
       </div>
     </motion.div>
   )
@@ -51,17 +44,19 @@ function StatItem({ stat, index }: { stat: { label: string; value: string; note?
 
 export default function StatsBlock({ content }: { content: StatsContent }) {
   return (
-    <section className="px-8 py-20 max-w-5xl">
-      <div className="flex items-center gap-4 mb-10">
-        <span className="font-mono text-xs text-amber uppercase tracking-widest">By the numbers</span>
-        <div className="rule-amber flex-1" />
-      </div>
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-0 divide-x divide-border">
-        {content.stats.map((stat, i) => (
-          <div key={i} className="px-6 first:pl-0">
-            <StatItem stat={stat} index={i} />
-          </div>
-        ))}
+    <section className="w-full py-20">
+      <div className="max-w-7xl mx-auto px-8">
+        <div className="flex items-center gap-4 mb-10">
+          <span className="font-mono text-xs text-amber uppercase tracking-widest">By the numbers</span>
+          <div className="rule-amber flex-1" />
+        </div>
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-0 divide-x divide-border">
+          {content.stats.map((stat, i) => (
+            <div key={i} className="px-6 first:pl-0">
+              <StatItem stat={stat} index={i} />
+            </div>
+          ))}
+        </div>
       </div>
     </section>
   )

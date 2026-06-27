@@ -72,7 +72,7 @@ export default async function PreviewPage({ params, searchParams }: Props) {
               {(() => {
                 switch (segment.type) {
                   case "hero":
-                    return <HeroBlock content={segment.content as HeroContent} />
+                    return <HeroBlock content={segment.content as HeroContent} vizSeed={0} />
                   case "preview":
                     return <PreviewBlock content={segment.content as PreviewContent} />
                   case "features":
