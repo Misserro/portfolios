@@ -137,4 +137,44 @@
     height: 1px;
     background: linear-gradient(90deg, var(--amber), transparent);
   }
+
+  /* Gradient text — champagne sweep across amber */
+  .grad-text {
+    background: linear-gradient(90deg, #D4A853 0%, #F0D080 45%, #D4A853 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  /* Hero ambient bloom — pulses slowly */
+  .hero-bloom {
+    position: absolute;
+    top: 40%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 900px;
+    height: 640px;
+    background: radial-gradient(ellipse at center, rgba(212,168,83,0.07) 0%, rgba(212,168,83,0.02) 45%, transparent 70%);
+    pointer-events: none;
+    animation: bloom 7s ease-in-out infinite alternate;
+  }
+
+  @keyframes bloom {
+    from { opacity: 0.6; transform: translate(-50%, -50%) scale(1); }
+    to   { opacity: 1;   transform: translate(-50%, -50%) scale(1.12); }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .hero-bloom { animation: none; }
+  }
+
+  /* Product viz — abstract SVG graphic on each product entry */
+  .product-viz {
+    opacity: 0.45;
+    transition: opacity 0.35s ease;
+  }
+
+  .product-entry:hover .product-viz {
+    opacity: 0.85;
+  }
 }
