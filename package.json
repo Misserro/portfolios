@@ -20,7 +20,6 @@
     "@fontsource/jetbrains-mono": "^5.2.8",
     "@fontsource/space-grotesk": "^5.2.10",
     "@fontsource/syne": "^5.2.7",
-    "@resvg/resvg-js": "^2.6.2",
     "better-auth": "^1.6.22",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
