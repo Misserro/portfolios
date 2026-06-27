@@ -177,6 +177,7 @@ export default function AIBuilder({ productId, sessionId, productName, onComplet
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
+          sessionId,
           headline:    hero.headline,
           tags:        hero.tags ?? [],
           description: hero.description ?? "",
