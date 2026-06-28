@@ -68,10 +68,12 @@ export function buildFlowChatMessages(
   messages: { role: 'user' | 'assistant'; content: string }[],
   productContext: string,
 ): { role: 'user' | 'assistant'; content: string }[] {
-  const systemInjection = productContext
-    ? [{ role: 'user' as const, content: `PRODUCT CONTEXT:\n${productContext}\n\nNow help me design the interactive flow for this product.` }]
-    : []
-  return [...systemInjection, ...messages]
+  if (!productContext) return messages
+  return [
+    { role: 'user' as const, content: `PRODUCT CONTEXT:\n${productContext}` },
+    { role: 'assistant' as const, content: 'Understood. I have the product context. I\'ll use it to help design a flow that accurately reflects this product.' },
+    ...messages,
+  ]
 }
 
 export function buildMermaidPrompt(

@@ -147,7 +147,8 @@ export default function FlowCanvas({ schema }: { schema: FlowSchema }) {
         for (const key of prev) {
           const sepIdx = key.indexOf("->")
           const from = sepIdx !== -1 ? key.slice(0, sepIdx) : key
-          if (keptSet.has(from)) next.add(key)
+          const to = sepIdx !== -1 ? key.slice(sepIdx + 2) : ""
+          if (keptSet.has(from) && keptSet.has(to)) next.add(key)
         }
         return next
       })

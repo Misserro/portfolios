@@ -229,7 +229,7 @@ export default function AIBuilder({ productId, sessionId, productName, onComplet
       setPhase("form_review")
       const allFields = [
         "meta", "hero.headline", "hero.subheadline", "hero.description", "hero.tags",
-        "features", "how_it_works", "stats", "cta",
+        "features", "how_it_works", "stats", "cta", "interactive_flow",
       ]
       allFields.forEach((field, i) => {
         setTimeout(() => setRevealedFields(prev => new Set([...prev, field])), 200 + i * 120)
@@ -754,7 +754,7 @@ function FormEditor({
       )}
 
       {/* Flow builder section */}
-      <RevealSection label="Interactive Flow" fieldKey="interactive_flow" revealed={revealedFields.has("how_it_works")}>
+      <RevealSection label="Interactive Flow" fieldKey="interactive_flow" revealed={revealedFields.has("interactive_flow")}>
         <FlowBuilder
           sessionId={sessionId}
           onSchema={(schema: FlowSchema) => {
