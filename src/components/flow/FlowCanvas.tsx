@@ -13,9 +13,10 @@ import FlowDecisionNode from "./FlowDecisionNode"
 import FlowOutcomeNode from "./FlowOutcomeNode"
 import FlowAnimatedEdge from "./FlowAnimatedEdge"
 
-// Node dimensions used for Dagre layout
-const NODE_W: Record<string, number> = { step: 180, decision: 140, outcome: 180 }
-const NODE_H: Record<string, number> = { step: 80, decision: 70, outcome: 70 }
+const ADVANCE_DELAY_MS = 800
+
+const NODE_W: Record<string, number> = { step: 180, decision: 180, outcome: 180 }
+const NODE_H: Record<string, number> = { step: 90, decision: 80, outcome: 70 }
 
 function computeLayout(
   schemaNodes: FlowNode[],
@@ -24,12 +25,8 @@ function computeLayout(
   const g = new dagre.graphlib.Graph()
   g.setGraph({ rankdir: "LR", nodesep: 50, ranksep: 90, marginx: 20, marginy: 20 })
   g.setDefaultEdgeLabel(() => ({}))
-
   schemaNodes.forEach(n => {
-    g.setNode(n.id, {
-      width: NODE_W[n.type] ?? 180,
-      height: NODE_H[n.type] ?? 80,
-    })
+    g.setNode(n.id, { width: NODE_W[n.type] ?? 180, height: NODE_H[n.type] ?? 90 })
   })
   schemaEdges.forEach(e => g.setEdge(e.from, e.to))
   dagre.layout(g)
@@ -39,7 +36,7 @@ function computeLayout(
     const pos = g.node(n.id)
     positions.set(n.id, {
       x: pos.x - (NODE_W[n.type] ?? 180) / 2,
-      y: pos.y - (NODE_H[n.type] ?? 80) / 2,
+      y: pos.y - (NODE_H[n.type] ?? 90) / 2,
     })
   })
   return positions
@@ -78,9 +75,17 @@ export default function FlowCanvas({ schema }: { schema: FlowSchema }) {
     [schema.nodes, schema.edges],
   )
 
-  // revealedIds: ordered list of revealed node IDs (entry first)
+  const containerHeight = useMemo(() => {
+    let maxBottom = 0
+    schema.nodes.forEach(n => {
+      const pos = positions.get(n.id)
+      if (!pos) return
+      maxBottom = Math.max(maxBottom, pos.y + (NODE_H[n.type] ?? 90))
+    })
+    return maxBottom + 80
+  }, [schema.nodes, positions])
+
   const [revealedIds, setRevealedIds] = useState<string[]>([entryId])
-  // revealedEdgeKeys: Set of "from->to" strings for revealed edges
   const [revealedEdgeKeys, setRevealedEdgeKeys] = useState<Set<string>>(new Set())
 
   useEffect(() => {
@@ -90,16 +95,23 @@ export default function FlowCanvas({ schema }: { schema: FlowSchema }) {
 
   const currentTip = revealedIds[revealedIds.length - 1] ?? entryId
 
-  // Outgoing edges from current tip node
   const pendingEdges = useMemo(
     () => schema.edges.filter(e => e.from === currentTip && !revealedEdgeKeys.has(`${e.from}->${e.to}`)),
     [schema.edges, currentTip, revealedEdgeKeys],
   )
 
-  function revealNext(edge: FlowEdge) {
+  const revealNext = useCallback((edge: FlowEdge) => {
     setRevealedIds(prev => [...prev, edge.to])
     setRevealedEdgeKeys(prev => new Set([...prev, `${edge.from}->${edge.to}`]))
-  }
+  }, [])
+
+  // Auto-advance when exactly one choice
+  useEffect(() => {
+    if (pendingEdges.length !== 1) return
+    const edge = pendingEdges[0]
+    const timer = setTimeout(() => revealNext(edge), ADVANCE_DELAY_MS)
+    return () => clearTimeout(timer)
+  }, [pendingEdges, revealNext])
 
   const nodes: Node[] = schema.nodes
     .filter(n => revealedIds.includes(n.id))
@@ -154,8 +166,7 @@ export default function FlowCanvas({ schema }: { schema: FlowSchema }) {
   )
 
   return (
-    <div className="w-full" style={{ height: 320 }}>
-      {/* SVG defs for arrowheads */}
+    <div className="w-full" style={{ height: containerHeight }}>
       <svg width="0" height="0" style={{ position: "absolute" }}>
         <defs>
           <marker id="arrow-amber" markerWidth="6" markerHeight="6" refX="5" refY="3" orient="auto">
@@ -176,9 +187,11 @@ export default function FlowCanvas({ schema }: { schema: FlowSchema }) {
         fitView
         fitViewOptions={{ padding: 0.25 }}
         panOnDrag={false}
-        zoomOnScroll={false}
-        zoomOnPinch={false}
+        zoomOnScroll={true}
+        zoomOnPinch={true}
         zoomOnDoubleClick={false}
+        minZoom={0.4}
+        maxZoom={2.0}
         nodesDraggable={false}
         nodesConnectable={false}
         elementsSelectable={false}
