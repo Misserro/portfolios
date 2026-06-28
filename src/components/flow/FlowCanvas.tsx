@@ -1,6 +1,6 @@
 "use client"
 
-import { useCallback, useMemo, useState } from "react"
+import { useCallback, useEffect, useMemo, useState } from "react"
 import {
   ReactFlow, Background, BackgroundVariant,
   type Node, type Edge,
@@ -64,17 +64,22 @@ const edgeTypes = {
 export default function FlowCanvas({ schema }: { schema: FlowSchema }) {
   const entryId = useMemo(
     () => findEntryNode(schema.nodes, schema.edges),
-    [schema],
+    [schema.nodes, schema.edges],
   )
   const positions = useMemo(
     () => computeLayout(schema.nodes, schema.edges),
-    [schema],
+    [schema.nodes, schema.edges],
   )
 
   // revealedIds: ordered list of revealed node IDs (entry first)
   const [revealedIds, setRevealedIds] = useState<string[]>([entryId])
   // revealedEdgeKeys: Set of "from->to" strings for revealed edges
   const [revealedEdgeKeys, setRevealedEdgeKeys] = useState<Set<string>>(new Set())
+
+  useEffect(() => {
+    setRevealedIds([entryId])
+    setRevealedEdgeKeys(new Set())
+  }, [entryId])
 
   const currentTip = revealedIds[revealedIds.length - 1] ?? entryId
 
@@ -89,28 +94,12 @@ export default function FlowCanvas({ schema }: { schema: FlowSchema }) {
     setRevealedEdgeKeys(prev => new Set([...prev, `${edge.from}->${edge.to}`]))
   }
 
-  function collapseToNode(nodeId: string) {
-    const idx = revealedIds.indexOf(nodeId)
-    if (idx === -1) return
-    const keptIds = revealedIds.slice(0, idx + 1)
-    const keptSet = new Set(keptIds)
-    setRevealedIds(keptIds)
-    setRevealedEdgeKeys(prev => {
-      const next = new Set<string>()
-      for (const key of prev) {
-        const [from] = key.split("->")
-        if (keptSet.has(from)) next.add(key)
-      }
-      return next
-    })
-  }
-
   const nodes: Node[] = schema.nodes
     .filter(n => revealedIds.includes(n.id) || pendingEdges.some(e => e.to === n.id))
     .map(n => {
       const pos = positions.get(n.id) ?? { x: 0, y: 0 }
       const isRevealed = revealedIds.includes(n.id)
-      const isActive = revealedIds.includes(n.id)
+      const isActive = isRevealed
       const isTip = n.id === currentTip
       return {
         id: n.id,
@@ -149,19 +138,25 @@ export default function FlowCanvas({ schema }: { schema: FlowSchema }) {
   const onNodeClick = useCallback(
     (_: React.MouseEvent, node: Node) => {
       const idx = revealedIds.indexOf(node.id)
-      if (idx !== -1 && idx < revealedIds.length - 1) {
-        collapseToNode(node.id)
-      }
+      if (idx === -1 || idx === revealedIds.length - 1) return
+      const keptIds = revealedIds.slice(0, idx + 1)
+      const keptSet = new Set(keptIds)
+      setRevealedIds(keptIds)
+      setRevealedEdgeKeys(prev => {
+        const next = new Set<string>()
+        for (const key of prev) {
+          const sepIdx = key.indexOf("->")
+          const from = sepIdx !== -1 ? key.slice(0, sepIdx) : key
+          if (keptSet.has(from)) next.add(key)
+        }
+        return next
+      })
     },
-    [revealedIds], // eslint-disable-line react-hooks/exhaustive-deps
+    [revealedIds],
   )
 
   const [, , onNodesChange] = useNodesState(nodes)
   const [, , onEdgesChange] = useEdgesState(edges)
-
-  // Sync external state changes into React Flow
-  const syncedNodes = nodes
-  const syncedEdges = edges
 
   return (
     <div className="w-full" style={{ height: 320 }}>
@@ -178,8 +173,8 @@ export default function FlowCanvas({ schema }: { schema: FlowSchema }) {
       </svg>
 
       <ReactFlow
-        nodes={syncedNodes}
-        edges={syncedEdges}
+        nodes={nodes}
+        edges={edges}
         onNodesChange={onNodesChange}
         onEdgesChange={onEdgesChange}
         nodeTypes={nodeTypes}
