@@ -9,6 +9,7 @@ export type SegmentType =
   | "testimonials"
   | "cta"
   | "map"
+  | "interactive_flow"
 
 export interface Product {
   id: string
@@ -99,6 +100,12 @@ export interface CTAContent {
   button_url: string
 }
 
+import type { FlowSchema } from "./flow"
+
+export interface FlowContent {
+  schema: FlowSchema
+}
+
 export type SegmentContent =
   | HeroContent
   | PreviewContent
@@ -108,6 +115,7 @@ export type SegmentContent =
   | TestimonialsContent
   | CTAContent
   | MapContent
+  | FlowContent
 
 // AI session types
 
