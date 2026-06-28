@@ -1,6 +1,6 @@
 "use client"
 
-import { Handle, Position, type NodeProps } from "@xyflow/react"
+import { Handle, Position, NodeToolbar, type NodeProps } from "@xyflow/react"
 import { motion } from "framer-motion"
 
 export interface FlowNodeData extends Record<string, unknown> {
@@ -9,6 +9,8 @@ export interface FlowNodeData extends Record<string, unknown> {
   stepIndex?: number
   active: boolean
   isCurrentTip: boolean
+  pendingEdges?: Array<{ from: string; to: string; label?: string }>
+  onChoose?: (edge: { from: string; to: string; label?: string }) => void
 }
 
 export default function FlowStepNode({ data, id }: NodeProps) {
@@ -39,11 +41,26 @@ export default function FlowStepNode({ data, id }: NodeProps) {
           {d.description}
         </p>
       )}
-      {d.isCurrentTip && (
+      {d.isCurrentTip && (!d.pendingEdges || d.pendingEdges.length === 0) && (
         <span className="mt-2 block w-1.5 h-1.5 rounded-full bg-[#F4A23A] animate-pulse" />
       )}
       <Handle type="target" position={Position.Left} className="!opacity-0 !w-0 !h-0" />
       <Handle type="source" position={Position.Right} className="!opacity-0 !w-0 !h-0" />
+      {d.isCurrentTip && d.pendingEdges && d.pendingEdges.length > 0 && (
+        <NodeToolbar isVisible position={Position.Bottom}>
+          <div className="flex gap-1.5 pt-1">
+            {d.pendingEdges.map((e, i) => (
+              <button
+                key={i}
+                onClick={() => d.onChoose?.(e)}
+                className="font-mono text-[10px] border border-[#F4A23A]/40 text-[#F4A23A] bg-[#08090B] px-2.5 py-1 rounded-sm hover:bg-[#F4A23A]/10 hover:border-[#F4A23A]/70 transition-all duration-200 whitespace-nowrap cursor-pointer"
+              >
+                {e.label || "→"}
+              </button>
+            ))}
+          </div>
+        </NodeToolbar>
+      )}
     </motion.div>
   )
 }

@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react"
 import {
-  ReactFlow, Background, BackgroundVariant,
+  ReactFlow, Background, BackgroundVariant, useReactFlow,
   type Node, type Edge,
 } from "@xyflow/react"
 import dagre from "dagre"
@@ -60,6 +60,14 @@ const edgeTypes = {
   flowAnimated: FlowAnimatedEdge,
 }
 
+function AutoFitView({ revealedCount }: { revealedCount: number }) {
+  const { fitView } = useReactFlow()
+  useEffect(() => {
+    fitView({ duration: 400, padding: 0.25 })
+  }, [revealedCount, fitView])
+  return null
+}
+
 export default function FlowCanvas({ schema }: { schema: FlowSchema }) {
   const entryId = useMemo(
     () => findEntryNode(schema.nodes, schema.edges),
@@ -94,45 +102,35 @@ export default function FlowCanvas({ schema }: { schema: FlowSchema }) {
   }
 
   const nodes: Node[] = schema.nodes
-    .filter(n => revealedIds.includes(n.id) || pendingEdges.some(e => e.to === n.id))
+    .filter(n => revealedIds.includes(n.id))
     .map(n => {
       const pos = positions.get(n.id) ?? { x: 0, y: 0 }
-      const isRevealed = revealedIds.includes(n.id)
-      const isActive = isRevealed
       const isTip = n.id === currentTip
       return {
         id: n.id,
         type: n.type,
         position: pos,
-        hidden: !isRevealed,
         data: {
           label: n.label,
           description: n.description,
-          active: isActive,
+          active: true,
           isCurrentTip: isTip,
+          pendingEdges: isTip ? pendingEdges : [],
+          onChoose: isTip ? (edge: FlowEdge) => revealNext(edge) : undefined,
         },
         draggable: false,
       }
     })
 
-  const edges: Edge[] = schema.edges.map(e => {
-    const edgeKey = `${e.from}->${e.to}`
-    const isRevealed = revealedEdgeKeys.has(edgeKey)
-    const isPending = e.from === currentTip && !isRevealed && revealedIds.includes(e.from)
-    return {
-      id: edgeKey,
+  const edges: Edge[] = schema.edges
+    .filter(e => revealedEdgeKeys.has(`${e.from}->${e.to}`))
+    .map(e => ({
+      id: `${e.from}->${e.to}`,
       source: e.from,
       target: e.to,
       type: "flowAnimated",
-      hidden: !isRevealed && !isPending,
-      data: {
-        label: e.label,
-        active: isRevealed,
-        pending: isPending,
-        onChoose: isPending ? () => revealNext(e) : undefined,
-      },
-    }
-  })
+      data: { label: e.label, active: true, pending: false },
+    }))
 
   const onNodeClick = useCallback(
     (_: React.MouseEvent, node: Node) => {
@@ -176,7 +174,7 @@ export default function FlowCanvas({ schema }: { schema: FlowSchema }) {
         edgeTypes={edgeTypes}
         onNodeClick={onNodeClick}
         fitView
-        fitViewOptions={{ padding: 0.2 }}
+        fitViewOptions={{ padding: 0.25 }}
         panOnDrag={false}
         zoomOnScroll={false}
         zoomOnPinch={false}
@@ -189,6 +187,7 @@ export default function FlowCanvas({ schema }: { schema: FlowSchema }) {
         colorMode="dark"
       >
         <Background variant={BackgroundVariant.Dots} gap={28} size={1} color="rgba(244,245,247,0.035)" />
+        <AutoFitView revealedCount={revealedIds.length} />
       </ReactFlow>
     </div>
   )

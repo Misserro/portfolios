@@ -1,13 +1,12 @@
 "use client"
 
-import { getBezierPath, EdgeLabelRenderer, type EdgeProps } from "@xyflow/react"
+import { getBezierPath, type EdgeProps } from "@xyflow/react"
 import { useEffect, useRef } from "react"
 
 export interface FlowEdgeData extends Record<string, unknown> {
   label?: string
   active: boolean
   pending: boolean
-  onChoose?: () => void
 }
 
 export default function FlowAnimatedEdge({
@@ -64,30 +63,17 @@ export default function FlowAnimatedEdge({
         markerEnd={markerEnd}
         style={{ transition: "stroke 0.3s, stroke-width 0.3s" }}
       />
-      {(d.pending || d.active) && (
-        <EdgeLabelRenderer>
-          <div
-            style={{
-              position: "absolute",
-              transform: `translate(-50%, -50%) translate(${labelX}px,${labelY}px)`,
-              pointerEvents: "all",
-            }}
-            className="nodrag nopan"
-          >
-            {d.pending ? (
-              <button
-                onClick={d.onChoose}
-                className="font-mono text-[10px] border border-[#F4A23A]/40 text-[#F4A23A] bg-[#08090B] px-2.5 py-1 rounded-sm hover:bg-[#F4A23A]/10 hover:border-[#F4A23A]/70 transition-all duration-200 whitespace-nowrap"
-              >
-                {d.label || "→"}
-              </button>
-            ) : d.label ? (
-              <span className="font-mono text-[10px] text-[#F4A23A]/60 bg-[#08090B] px-2 py-0.5 whitespace-nowrap">
-                {d.label}
-              </span>
-            ) : null}
-          </div>
-        </EdgeLabelRenderer>
+      {d.active && d.label && (
+        <text
+          x={labelX}
+          y={labelY}
+          textAnchor="middle"
+          dominantBaseline="middle"
+          className="react-flow__edge-text"
+          style={{ fontSize: 9, fill: "rgba(244,162,58,0.55)", fontFamily: "monospace" }}
+        >
+          {d.label}
+        </text>
       )}
     </>
   )
