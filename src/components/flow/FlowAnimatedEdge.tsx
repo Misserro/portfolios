@@ -64,7 +64,7 @@ export default function FlowAnimatedEdge({
         markerEnd={markerEnd}
         style={{ transition: "stroke 0.3s, stroke-width 0.3s" }}
       />
-      {(d.label && (d.pending || d.active)) && (
+      {(d.pending || d.active) && (
         <EdgeLabelRenderer>
           <div
             style={{
@@ -79,13 +79,13 @@ export default function FlowAnimatedEdge({
                 onClick={d.onChoose}
                 className="font-mono text-[10px] border border-[#F4A23A]/40 text-[#F4A23A] bg-[#08090B] px-2.5 py-1 rounded-sm hover:bg-[#F4A23A]/10 hover:border-[#F4A23A]/70 transition-all duration-200 whitespace-nowrap"
               >
-                {d.label}
+                {d.label || "→"}
               </button>
-            ) : (
+            ) : d.label ? (
               <span className="font-mono text-[10px] text-[#F4A23A]/60 bg-[#08090B] px-2 py-0.5 whitespace-nowrap">
                 {d.label}
               </span>
-            )}
+            ) : null}
           </div>
         </EdgeLabelRenderer>
       )}

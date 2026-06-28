@@ -4,7 +4,6 @@ import { useCallback, useEffect, useMemo, useState } from "react"
 import {
   ReactFlow, Background, BackgroundVariant,
   type Node, type Edge,
-  useNodesState, useEdgesState,
 } from "@xyflow/react"
 import dagre from "dagre"
 import "@xyflow/react/dist/style.css"
@@ -156,9 +155,6 @@ export default function FlowCanvas({ schema }: { schema: FlowSchema }) {
     [revealedIds],
   )
 
-  const [, , onNodesChange] = useNodesState(nodes)
-  const [, , onEdgesChange] = useEdgesState(edges)
-
   return (
     <div className="w-full" style={{ height: 320 }}>
       {/* SVG defs for arrowheads */}
@@ -176,8 +172,6 @@ export default function FlowCanvas({ schema }: { schema: FlowSchema }) {
       <ReactFlow
         nodes={nodes}
         edges={edges}
-        onNodesChange={onNodesChange}
-        onEdgesChange={onEdgesChange}
         nodeTypes={nodeTypes}
         edgeTypes={edgeTypes}
         onNodeClick={onNodeClick}
