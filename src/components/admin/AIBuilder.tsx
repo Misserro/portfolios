@@ -4,6 +4,8 @@ import { useState, useRef, useEffect, useCallback } from "react"
 import { motion, AnimatePresence } from "framer-motion"
 import { toast } from "sonner"
 import type { AIMessage, AIFileAttachment } from "@/types"
+import FlowBuilder from "@/components/admin/FlowBuilder"
+import type { FlowSchema } from "@/types/flow"
 
 type Phase = "clarifying" | "form_review" | "preview"
 
@@ -14,6 +16,7 @@ interface SegmentMap {
   stats?: { stats: { label: string; value: string; note?: string }[] }
   cta?: { headline: string; description: string; button_label: string; button_url: string }
   map?: { label?: string; countries: string[]; cities: { name: string; coordinates: [number, number] }[]; center: [number, number]; scale: number }
+  interactive_flow?: { schema: FlowSchema }
 }
 
 interface Form {
@@ -187,12 +190,11 @@ export default function AIBuilder({ productId, sessionId, productName, onComplet
           tags:        hero.tags ?? [],
           description: hero.description ?? "",
           features,
-          steps: f.segments.how_it_works?.steps ?? [],
           stats: f.segments.stats?.stats ?? [],
         }),
       })
       if (!res.ok) return
-      const { iconSvgs, flowSvg, mapData } = await res.json()
+      const { iconSvgs, mapData } = await res.json()
       setForm(prev => {
         if (!prev) return prev
         const next = JSON.parse(JSON.stringify(prev)) as Form
@@ -200,9 +202,6 @@ export default function AIBuilder({ productId, sessionId, productName, onComplet
           next.segments.features.features = next.segments.features.features.map(
             (feat: { title: string; description: string; icon_svg?: string }, i: number) => ({ ...feat, icon_svg: iconSvgs[i] ?? feat.icon_svg })
           )
-        }
-        if (flowSvg && next.segments.how_it_works) {
-          next.segments.how_it_works.flow_svg = flowSvg
         }
         if (mapData) {
           next.segments.map = mapData
@@ -245,7 +244,7 @@ export default function AIBuilder({ productId, sessionId, productName, onComplet
     if (!form) return
     setSavingPreview(true)
     try {
-      const segmentOrder = ["hero", "preview", "features", "how_it_works", "stats", "map", "testimonials", "cta"] as const
+      const segmentOrder = ["hero", "preview", "features", "how_it_works", "stats", "map", "testimonials", "cta", "interactive_flow"] as const
       const segments = segmentOrder
         .filter(type => form.segments[type as keyof SegmentMap])
         .map((type, i) => ({
@@ -620,7 +619,7 @@ export default function AIBuilder({ productId, sessionId, productName, onComplet
               transition={{ duration: 0.35, ease: "easeOut" }}
               className="flex-1 overflow-y-auto py-6 px-8 min-h-0"
             >
-              <FormEditor form={form} onChange={setForm} revealedFields={revealedFields} />
+              <FormEditor form={form} onChange={setForm} revealedFields={revealedFields} sessionId={sessionId} />
             </motion.div>
           )}
         </AnimatePresence>
@@ -632,11 +631,12 @@ export default function AIBuilder({ productId, sessionId, productName, onComplet
 // ─── Form Editor ────────────────────────────────────────────────────────────
 
 function FormEditor({
-  form, onChange, revealedFields,
+  form, onChange, revealedFields, sessionId,
 }: {
   form: Form
   onChange: (f: Form) => void
   revealedFields: Set<string>
+  sessionId: string
 }) {
   function patch(path: string[], value: unknown) {
     const next = JSON.parse(JSON.stringify(form)) as Form
@@ -752,6 +752,27 @@ function FormEditor({
           </Row>
         </RevealSection>
       )}
+
+      {/* Flow builder section */}
+      <RevealSection label="Interactive Flow" fieldKey="interactive_flow" revealed={revealedFields.has("how_it_works")}>
+        <FlowBuilder
+          sessionId={sessionId}
+          onSchema={(schema: FlowSchema) => {
+            onChange({
+              ...form,
+              segments: {
+                ...form.segments,
+                interactive_flow: { schema },
+              },
+            })
+          }}
+        />
+        {form.segments.interactive_flow && (
+          <p className="font-mono text-[10px] text-amber/60">
+            ✓ Flow animation ready — {form.segments.interactive_flow.schema.nodes.length} nodes
+          </p>
+        )}
+      </RevealSection>
     </div>
   )
 }

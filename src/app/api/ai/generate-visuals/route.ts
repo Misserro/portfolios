@@ -3,7 +3,6 @@ import { auth } from "@/lib/auth"
 import { queryOne } from "@/lib/db"
 import Anthropic from "@anthropic-ai/sdk"
 import type { AISession, AIMessage, MapContent } from "@/types"
-import { renderFlow } from "@/lib/flow-renderer"
 
 const client = new Anthropic()
 
@@ -137,7 +136,7 @@ export async function POST(req: NextRequest) {
   const {
     sessionId,
     headline = "", tags = [],
-    features = [], steps = [],
+    features = [],
   } = await req.json()
 
   let conversationContext = ""
@@ -172,9 +171,6 @@ export async function POST(req: NextRequest) {
     ? parseIcons(iconMsg.content[0].type === "text" ? iconMsg.content[0].text : "", features.length).map(sanitizeSvg)
     : []
 
-  // Generate flow SVG programmatically
-  const flowSvg = steps.length > 0 ? renderFlow(steps) : undefined
-
   // Parse map data
   let mapData: MapContent | undefined
   try {
@@ -186,5 +182,5 @@ export async function POST(req: NextRequest) {
     // Non-fatal
   }
 
-  return NextResponse.json({ iconSvgs, flowSvg, mapData })
+  return NextResponse.json({ iconSvgs, mapData })
 }
