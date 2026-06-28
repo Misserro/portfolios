@@ -25,8 +25,8 @@ export default function FlowOutcomeNode({ data, id }: NodeProps) {
           {d.label}
         </p>
       </div>
-      {d.description && d.active && (
-        <p className="mt-1.5 font-mono text-[10px] text-[#8A8F98] leading-relaxed">
+      {d.description && (
+        <p className="mt-1.5 font-mono text-[10px] text-[#8A8F98] leading-relaxed line-clamp-2">
           {d.description}
         </p>
       )}

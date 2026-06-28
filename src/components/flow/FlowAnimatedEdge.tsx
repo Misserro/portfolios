@@ -30,8 +30,10 @@ export default function FlowAnimatedEdge({
     el.style.strokeDasharray = `${len}`
     el.style.strokeDashoffset = `${len}`
     requestAnimationFrame(() => {
-      el.style.transition = "stroke-dashoffset 0.5s cubic-bezier(0.22,1,0.36,1)"
-      el.style.strokeDashoffset = "0"
+      requestAnimationFrame(() => {
+        el.style.transition = "stroke-dashoffset 0.5s cubic-bezier(0.22,1,0.36,1)"
+        el.style.strokeDashoffset = "0"
+      })
     })
   }, [])
 
