@@ -89,7 +89,7 @@ export default function FlowBuilder({ sessionId, onSchema }: Props) {
           messages: updatedMessages,
         }),
       })
-      if (!res.body) throw new Error()
+      if (!res.ok || !res.body) throw new Error()
 
       const reader = res.body.getReader()
       const decoder = new TextDecoder()
@@ -115,7 +115,7 @@ export default function FlowBuilder({ sessionId, onSchema }: Props) {
     }
   }
 
-  async function handleGenerateMermaid() {
+  async function generateMermaid(advancePhase: boolean) {
     setGeneratingMermaid(true)
     try {
       const res = await fetch("/api/ai/generate-flow", {
@@ -126,27 +126,9 @@ export default function FlowBuilder({ sessionId, onSchema }: Props) {
       if (!res.ok) throw new Error()
       const { mermaid: generated } = await res.json()
       setMermaid(generated)
-      setPhase("mermaid_preview")
+      if (advancePhase) setPhase("mermaid_preview")
     } catch {
       toast.error("Failed to generate diagram")
-    } finally {
-      setGeneratingMermaid(false)
-    }
-  }
-
-  async function handleRegenerateMermaid() {
-    setGeneratingMermaid(true)
-    try {
-      const res = await fetch("/api/ai/generate-flow", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ action: "mermaid", sessionId, messages }),
-      })
-      if (!res.ok) throw new Error()
-      const { mermaid: generated } = await res.json()
-      setMermaid(generated)
-    } catch {
-      toast.error("Failed to regenerate diagram")
     } finally {
       setGeneratingMermaid(false)
     }
@@ -182,7 +164,7 @@ export default function FlowBuilder({ sessionId, onSchema }: Props) {
   if (phase === "done") {
     return (
       <div className="flex items-center gap-3 py-4">
-        <span className="w-2 h-2 rounded-full bg-amber" />
+        <span className="text-amber text-sm">✓</span>
         <span className="font-mono text-xs text-amber">Flow animation generated</span>
         <button
           onClick={() => setPhase("chat")}
@@ -238,7 +220,7 @@ export default function FlowBuilder({ sessionId, onSchema }: Props) {
             </button>
           </form>
           <button
-            onClick={handleGenerateMermaid}
+            onClick={() => generateMermaid(true)}
             disabled={generatingMermaid || streaming || messages.length < 2}
             className="font-mono text-xs border border-amber/30 text-amber px-4 py-2 rounded-sm hover:bg-amber/8 transition-colors disabled:opacity-30 self-start"
           >
@@ -280,7 +262,7 @@ export default function FlowBuilder({ sessionId, onSchema }: Props) {
                 ← Refine in chat
               </button>
               <button
-                onClick={handleRegenerateMermaid}
+                onClick={() => generateMermaid(false)}
                 disabled={generatingMermaid}
                 className="font-mono text-xs text-slate hover:text-amber border border-border px-3 py-2 rounded-sm transition-colors disabled:opacity-30"
               >
