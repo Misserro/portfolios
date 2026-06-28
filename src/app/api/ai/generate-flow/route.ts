@@ -37,6 +37,10 @@ export async function POST(req: NextRequest) {
     mermaid?: string
   }
 
+  if (!['chat', 'mermaid', 'schema'].includes(body.action)) {
+    return NextResponse.json({ error: 'invalid action' }, { status: 400 })
+  }
+
   // Load product context from main AI session
   let productContext = ""
   if (body.sessionId) {
