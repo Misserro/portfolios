@@ -141,7 +141,7 @@ export default function FlowBuilder({ sessionId, onSchema }: Props) {
       const res = await fetch("/api/ai/generate-flow", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ action: "schema", mermaid }),
+        body: JSON.stringify({ action: "schema", mermaid, sessionId }),
       })
       if (!res.ok) throw new Error()
       const { schema } = await res.json()

@@ -4,7 +4,7 @@ export interface FlowNode {
   id: string
   type: FlowNodeType
   label: string
-  description?: string
+  description: string
 }
 
 export interface FlowEdge {

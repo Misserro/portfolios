@@ -60,7 +60,7 @@ export async function POST(req: NextRequest) {
       model: "claude-sonnet-4-6",
       max_tokens: 2000,
       system: FLOW_SCHEMA_SYSTEM_PROMPT,
-      messages: [{ role: "user", content: buildSchemaPrompt(body.mermaid) }],
+      messages: [{ role: "user", content: buildSchemaPrompt(body.mermaid, productContext) }],
     })
 
     const raw = msg.content[0].type === "text" ? msg.content[0].text : ""
