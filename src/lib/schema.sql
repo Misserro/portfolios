@@ -14,7 +14,7 @@ create table if not exists products (
 create table if not exists segments (
   id uuid primary key default gen_random_uuid(),
   product_id uuid not null references products(id) on delete cascade,
-  type text not null check (type in ('hero', 'preview', 'features', 'how_it_works', 'stats', 'map', 'testimonials', 'cta')),
+  type text not null check (type in ('hero', 'preview', 'features', 'how_it_works', 'stats', 'map', 'testimonials', 'cta', 'interactive_flow')),
   content jsonb not null default '{}',
   visible boolean not null default true,
   "order" integer not null default 0,

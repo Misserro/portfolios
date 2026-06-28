@@ -3,7 +3,7 @@ import { query, queryOne } from "@/lib/db"
 import type {
   Product, Segment,
   HeroContent, PreviewContent, FeaturesContent,
-  HowItWorksContent, StatsContent, TestimonialsContent, CTAContent, MapContent,
+  HowItWorksContent, StatsContent, TestimonialsContent, CTAContent, MapContent, FlowContent,
 } from "@/types"
 import HeroBlock from "@/components/segments/HeroBlock"
 import PreviewBlock from "@/components/segments/PreviewBlock"
@@ -13,6 +13,7 @@ import StatsBlock from "@/components/segments/StatsBlock"
 import TestimonialsBlock from "@/components/segments/TestimonialsBlock"
 import CTABlock from "@/components/segments/CTABlock"
 import MapBlock from "@/components/segments/MapBlock"
+import FlowBlock from "@/components/segments/FlowBlock"
 import Link from "next/link"
 
 interface Props {
@@ -88,6 +89,8 @@ export default async function PreviewPage({ params, searchParams }: Props) {
                     return <CTABlock content={segment.content as CTAContent} />
                   case "map":
                     return <MapBlock content={segment.content as MapContent} />
+                  case "interactive_flow":
+                    return <FlowBlock content={segment.content as FlowContent} />
                   default:
                     return null
                 }
